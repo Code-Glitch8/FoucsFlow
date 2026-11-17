@@ -58,7 +58,7 @@ class SettingsViewModel(
 private val DurationChoices = listOf(15, 25, 30, 45, 60, 90)
 
 @Composable
-fun SettingsScreen(onOpenBlocking: () -> Unit) {
+fun SettingsScreen(onOpenBlocking: () -> Unit, onOpenAi: () -> Unit) {
     val vm = containerViewModel { SettingsViewModel(it.settings, it.breakConfig) }
     val theme by vm.theme.collectAsStateWithLifecycle()
     val mode by vm.defaultMode.collectAsStateWithLifecycle()
@@ -175,13 +175,13 @@ fun SettingsScreen(onOpenBlocking: () -> Unit) {
 
         item {
             AppCard {
-                Text("More settings", style = MaterialTheme.typography.titleMedium)
+                SectionLabel("OFFLINE AI & VOICE")
                 Text(
-                    "Offline AI model, " +
-                        "voice and data export/import are added in later phases.",
+                    "Download or import an on-device model, and choose how voice input behaves.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                OutlinedButton(onClick = onOpenAi) { Text("Open AI & voice settings") }
             }
         }
     }

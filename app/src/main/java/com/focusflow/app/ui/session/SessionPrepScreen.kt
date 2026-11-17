@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -74,7 +75,7 @@ private sealed interface PrepDialog {
 @Composable
 fun SessionPrepScreen(onBack: () -> Unit, onManageSubjects: () -> Unit) {
     val vm = containerViewModel {
-        SessionPrepViewModel(it.sessions, it.subjects, it.tasks, it.presets, it.settings)
+        SessionPrepViewModel(it.sessions, it.subjects, it.tasks, it.presets, it.settings, it.ai, com.focusflow.app.speech.VoiceRecognizer(it.appContext))
     }
     val ui by vm.state.collectAsStateWithLifecycle()
     val form = ui.form
@@ -89,6 +90,15 @@ fun SessionPrepScreen(onBack: () -> Unit, onManageSubjects: () -> Unit) {
             FocusSessionService.start(context)
             onBack()
         }
+    }
+
+    val micLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) vm.startVoice()
+    }
+    fun toggleMic() {
+        if (ui.ai.listening) { vm.stopVoice(); return }
+        val ok = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        if (ok) vm.startVoice() else micLauncher.launch(Manifest.permission.RECORD_AUDIO)
     }
 
     // Notification permission only affects the ongoing notification, never the session itself.
@@ -240,6 +250,75 @@ fun SessionPrepScreen(onBack: () -> Unit, onManageSubjects: () -> Unit) {
                         minLines = 4,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    if (ui.ai.listening) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.Mic, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                            Text(
+                                "  Listening…" + if (ui.ai.partial.isNotBlank()) " “${ui.ai.partial}”" else "",
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = { toggleMic() },
+                            enabled = ui.ai.voice != com.focusflow.app.speech.VoiceAvailability.UNAVAILABLE,
+                        ) {
+                            Icon(Icons.Outlined.Mic, contentDescription = null)
+                            Text(if (ui.ai.listening) "  Stop" else "  Speak")
+                        }
+                        Button(
+                            onClick = vm::generateTasks,
+                            enabled = form.description.isNotBlank() && !ui.ai.generating,
+                        ) { Text(if (ui.ai.generating) "Working…" else "Generate tasks") }
+                    }
+                    if (ui.ai.voice == com.focusflow.app.speech.VoiceAvailability.UNAVAILABLE) {
+                        Text(
+                            "Voice input isn't available on this phone; type your plan instead.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
+            if (ui.ai.proposals.isNotEmpty() || ui.ai.note != null) {
+                item {
+                    AppCard {
+                        val label = if (ui.ai.origin == com.focusflow.app.data.db.TaskOrigin.ON_DEVICE_AI)
+                            "SUGGESTED BY ON-DEVICE AI" else "SUGGESTED BY SIMPLE RULES (NOT AI)"
+                        SectionLabel(label)
+                        ui.ai.note?.let {
+                            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        ui.ai.proposals.forEachIndexed { i, p ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(checked = p.selected, onCheckedChange = { vm.toggleProposal(i) })
+                                Column(Modifier.weight(1f)) {
+                                    Text(p.title)
+                                    val meta = listOfNotNull(p.minutes?.let { "~$it min" }, p.subtasks.takeIf { it.isNotEmpty() }?.joinToString(" · "))
+                                    if (meta.isNotEmpty()) Text(
+                                        meta.joinToString(" — "),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                        if (ui.ai.proposals.isNotEmpty()) {
+                            Text(
+                                "Review these, then add them to your task list. You can edit each one afterwards. Nothing starts until you decide.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = vm::acceptProposals, enabled = ui.ai.proposals.any { it.selected }) { Text("Add selected") }
+                                TextButton(onClick = vm::discardProposals) { Text("Discard") }
+                            }
+                        } else {
+                            TextButton(onClick = vm::discardProposals) { Text("Dismiss") }
+                        }
+                    }
                 }
             }
 
@@ -414,7 +493,13 @@ fun SessionPrepScreen(onBack: () -> Unit, onManageSubjects: () -> Unit) {
                 .padding(16.dp)
                 .heightIn(min = 52.dp),
         ) {
-            Text(if (ui.subject == null) "Choose a subject to start" else "Start session")
+            Text(
+                when {
+                    ui.subject == null -> "Choose a subject to start"
+                    ui.ai.proposals.isNotEmpty() -> "Add or discard suggested tasks first"
+                    else -> "Start session"
+                },
+            )
         }
     }
 

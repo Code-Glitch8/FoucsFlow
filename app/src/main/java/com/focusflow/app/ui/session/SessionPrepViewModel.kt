@@ -2,7 +2,12 @@ package com.focusflow.app.ui.session
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.focusflow.app.ai.AiService
 import com.focusflow.app.data.db.ChapterEntity
+import com.focusflow.app.data.db.TaskOrigin
+import com.focusflow.app.speech.VoiceAvailability
+import com.focusflow.app.speech.VoiceListener
+import com.focusflow.app.speech.VoiceRecognizer
 import com.focusflow.app.data.db.SessionMode
 import com.focusflow.app.data.db.StudyPresetEntity
 import com.focusflow.app.data.db.SubjectEntity
@@ -53,9 +58,23 @@ data class PrepUiState(
     val resumable: List<TaskEntity> = emptyList(),
     val allChapters: List<ChapterEntity> = emptyList(),
     val starting: Boolean = false,
+    val ai: AiUiState = AiUiState(),
 ) {
-    val canStart: Boolean get() = subject != null && !starting && form.durationMinutes > 0
+    /** Proposed tasks must be accepted or discarded first, so nothing unreviewed ends up in a session. */
+    val canStart: Boolean get() = subject != null && !starting && form.durationMinutes > 0 && ai.proposals.isEmpty() && !ai.generating
 }
+
+data class Proposal(val title: String, val minutes: Int?, val subtasks: List<String>, val selected: Boolean = true)
+
+data class AiUiState(
+    val generating: Boolean = false,
+    val proposals: List<Proposal> = emptyList(),
+    val origin: TaskOrigin = TaskOrigin.RULE_BASED,
+    val note: String? = null,
+    val listening: Boolean = false,
+    val partial: String = "",
+    val voice: VoiceAvailability = VoiceAvailability.UNAVAILABLE,
+)
 
 class SessionPrepViewModel(
     private val sessions: SessionRepository,
@@ -63,8 +82,11 @@ class SessionPrepViewModel(
     private val taskRepo: TaskRepository,
     private val presetRepo: PresetRepository,
     private val settings: AppSettings,
+    private val aiService: AiService,
+    private val voice: VoiceRecognizer,
 ) : ViewModel() {
     private val form = MutableStateFlow(PrepForm())
+    private val aiState = MutableStateFlow(AiUiState(voice = voice.availability()))
     private val starting = MutableStateFlow(false)
 
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
@@ -103,6 +125,7 @@ class SessionPrepViewModel(
             allChapters = allChapters,
         )
     }.combine(starting) { ui, s -> ui.copy(starting = s) }
+        .combine(aiState) { ui, a -> ui.copy(ai = a) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PrepUiState())
 
     fun selectSubject(s: SubjectEntity) = form.update {
@@ -187,6 +210,80 @@ class SessionPrepViewModel(
             ),
         )
     }
+
+    // ---- AI task generation (proposals only; the user approves them) ----
+
+    fun generateTasks() {
+        val ui = state.value
+        val text = ui.form.description.trim()
+        if (text.isEmpty()) { _messages.tryEmit("Describe what you want to study first"); return }
+        if (aiState.value.generating) return
+        aiState.update { it.copy(generating = true, proposals = emptyList(), note = null) }
+        viewModelScope.launch {
+            val chapterNames = ui.allChapters.filter { it.id in ui.form.chapterIds }.map { it.name }
+            val r = try {
+                aiService.extractTasks(text, ui.subject?.name, chapterNames)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                null
+            }
+            aiState.update {
+                if (r == null) it.copy(generating = false, note = "Could not generate tasks. You can add them by hand.")
+                else it.copy(
+                    generating = false,
+                    origin = r.source,
+                    note = r.note,
+                    proposals = r.tasks.map { t -> Proposal(t.title, t.minutes, t.subtasks) },
+                )
+            }
+            if (r != null && r.tasks.isEmpty()) _messages.tryEmit("No tasks found in that description")
+        }
+    }
+
+    fun toggleProposal(i: Int) = aiState.update { a ->
+        a.copy(proposals = a.proposals.mapIndexed { idx, p -> if (idx == i) p.copy(selected = !p.selected) else p })
+    }
+
+    fun acceptProposals() {
+        val a = aiState.value
+        val chosen = a.proposals.filter { it.selected }
+        addDraftTasks(chosen.map { DraftTask(it.title, it.minutes, origin = a.origin, subtasks = it.subtasks) })
+        aiState.update { it.copy(proposals = emptyList(), note = null) }
+    }
+
+    fun discardProposals() = aiState.update { it.copy(proposals = emptyList(), note = null) }
+
+    // ---- voice ----
+
+    fun startVoice() {
+        viewModelScope.launch {
+            val offlineOnly = settings.voiceOfflineOnly.first()
+            val ok = voice.start(offlineOnly, object : VoiceListener {
+                override fun onListening() = aiState.update { it.copy(listening = true, partial = "") }
+                override fun onPartial(text: String) = aiState.update { it.copy(partial = text) }
+                override fun onFinal(text: String) {
+                    aiState.update { it.copy(listening = false, partial = "") }
+                    // Appended to the editable box, so the user can correct it before using it.
+                    form.update { f -> f.copy(description = (f.description.trim() + " " + text).trim()) }
+                }
+                override fun onError(message: String) {
+                    aiState.update { it.copy(listening = false, partial = "") }
+                    _messages.tryEmit(message)
+                }
+            })
+            if (!ok) {
+                _messages.tryEmit(
+                    if (offlineOnly) "No offline speech recognizer on this phone. Type instead, or allow online voice in Settings."
+                    else "Voice input isn't available on this phone. Type instead.",
+                )
+            }
+        }
+    }
+
+    fun stopVoice() { voice.finishListening() }
+
+    override fun onCleared() { voice.stop() }
 
     // ---- presets ----
 
