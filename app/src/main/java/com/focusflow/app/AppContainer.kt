@@ -1,6 +1,9 @@
 package com.focusflow.app
 
 import android.content.Context
+import com.focusflow.app.ai.AiService
+import com.focusflow.app.ai.LocalLlm
+import com.focusflow.app.ai.ModelManager
 import com.focusflow.app.data.db.FocusFlowDatabase
 import com.focusflow.app.data.repo.BlockRulesRepository
 import com.focusflow.app.data.repo.BreakConfigRepository
@@ -28,4 +31,8 @@ class AppContainer(context: Context) {
     val sessions = SessionRepository(database, tasks)
     val blockRules = BlockRulesRepository(database)
     val blockState = BlockStateHolder(sessions, blockRules, settings, appScope)
+
+    val models = ModelManager(appContext, appScope, settings)
+    val llm = LocalLlm(appContext, appScope)
+    val ai = AiService(models, llm, settings)
 }
