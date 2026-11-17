@@ -169,7 +169,7 @@ class FloatingAssistant(
         container.appScope.launch { container.settings.setBubblePosition(bubbleX, bubbleY) }
     }
 
-    private fun setExpanded(value: Boolean) {
+    private fun changeExpanded(value: Boolean) {
         expanded = value
         applyLayout()
     }
@@ -178,7 +178,7 @@ class FloatingAssistant(
         context.startActivity(
             Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
         )
-        setExpanded(false)
+        changeExpanded(false)
     }
 
     // ------------------------------------------------------------------ UI
@@ -220,7 +220,7 @@ class FloatingAssistant(
                         onDrag = { change, amount -> change.consume(); dragBy(amount.x, amount.y) },
                     )
                 }
-                .clickable { setExpanded(true) },
+                .clickable { changeExpanded(true) },
             contentAlignment = Alignment.Center,
         ) {
             Text(text, color = MaterialTheme.colorScheme.onPrimary, fontSize = 12.sp)
@@ -270,7 +270,7 @@ class FloatingAssistant(
                             )
                         }
                     }
-                    TextButton(onClick = { setExpanded(false) }) { Text("Collapse") }
+                    TextButton(onClick = { changeExpanded(false) }) { Text("Collapse") }
                 }
 
                 Text(
