@@ -82,6 +82,11 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
 
+    // On-device LLM runtime (runs fully offline; model is downloaded by the user on request).
+    implementation(libs.litertlm.android)
+
     testImplementation(libs.junit)
+    // Android's org.json is stubbed in unit tests, so use the real library there.
+    testImplementation(libs.org.json)
     testImplementation(libs.kotlinx.coroutines.test)
 }
