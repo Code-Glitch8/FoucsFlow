@@ -43,12 +43,15 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Run unit tests and build debug APK
+        shell: bash
         run: |
+          set -o pipefail
           ./gradlew --no-daemon --stacktrace testDebugUnitTest assembleDebug 2>&1 | tee build.log
 
       - name: Surface build errors as annotations
         if: failure()
         run: |
+          [ -f build.log ] || exit 0
           msg=$(grep -E -A3 '^e: |What went wrong|FAILED|error:' build.log | head -60 \
             | sed -e 's/%/%25/g' -e ':a;N;$!ba;s/\n/%0A/g')
           echo "::error title=Gradle build failed::${msg}"
