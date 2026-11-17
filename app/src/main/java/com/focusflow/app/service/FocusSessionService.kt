@@ -28,6 +28,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -40,6 +41,7 @@ import kotlinx.coroutines.launch
 class FocusSessionService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var job: Job? = null
+    private var overlay: FloatingAssistant? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -64,6 +66,7 @@ class FocusSessionService : Service() {
         val repo = (application as FocusFlowApp).container.sessions
         repo.observeActive().collectLatest { active ->
             if (active == null) {
+                overlay?.hide()
                 ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
                 stopSelf()
                 return@collectLatest
@@ -72,7 +75,13 @@ class FocusSessionService : Service() {
             val usage = UsageStatsMonitor(this@FocusSessionService)
             val essentials = EssentialApps.resolve(this@FocusSessionService)
             // Re-checked every second: cheap, and robust to clock changes and doze.
+            val container = (application as FocusFlowApp).container
+            val assistant = overlay ?: FloatingAssistant(this@FocusSessionService, container).also { overlay = it }
             while (scope.isActive) {
+                val wantBubble = container.settings.floatingEnabled.first() &&
+                    Permissions.overlayGranted(this@FocusSessionService) &&
+                    !AppVisibility.mainVisible.value
+                if (wantBubble) assistant.show() else assistant.hide()
                 runUsageStatsFallback(usage, essentials)
                 val status = repo.tick(active.session.id)
                 if (status == SessionStatus.COMPLETED) {
@@ -168,6 +177,7 @@ class FocusSessionService : Service() {
     }
 
     override fun onDestroy() {
+        overlay?.hide()
         job?.cancel()
         scope.cancel()
         super.onDestroy()

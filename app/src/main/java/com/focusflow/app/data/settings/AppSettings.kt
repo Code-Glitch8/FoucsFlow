@@ -23,6 +23,9 @@ class AppSettings(private val context: Context) {
         val defaultDurationMin = intPreferencesKey("default_duration_min")
         val shortsMode = stringPreferencesKey("youtube_shorts_mode")
         val homeRedirect = booleanPreferencesKey("youtube_home_redirect")
+        val floatingEnabled = booleanPreferencesKey("floating_enabled")
+        val bubbleX = intPreferencesKey("bubble_x")
+        val bubbleY = intPreferencesKey("bubble_y")
     }
 
     private val store get() = context.settingsStore
@@ -33,6 +36,19 @@ class AppSettings(private val context: Context) {
 
     val shortsMode: Flow<ShortsMode> = store.data.map { it.enumOrDefault(Keys.shortsMode, ShortsMode.FOCUS_ONLY) }
     val homeRedirect: Flow<Boolean> = store.data.map { it[Keys.homeRedirect] ?: false }
+
+    val floatingEnabled: Flow<Boolean> = store.data.map { it[Keys.floatingEnabled] ?: true }
+
+    /** Last bubble position in pixels, or null if the user never moved it. */
+    val bubblePosition: Flow<Pair<Int, Int>?> = store.data.map {
+        val x = it[Keys.bubbleX]
+        val y = it[Keys.bubbleY]
+        if (x != null && y != null) x to y else null
+    }
+
+    suspend fun setFloatingEnabled(enabled: Boolean) = store.edit { it[Keys.floatingEnabled] = enabled }
+    suspend fun setBubblePosition(x: Int, y: Int) = store.edit { it[Keys.bubbleX] = x; it[Keys.bubbleY] = y }
+    suspend fun resetBubblePosition() = store.edit { it.remove(Keys.bubbleX); it.remove(Keys.bubbleY) }
 
     suspend fun setShortsMode(mode: ShortsMode) = store.edit { it[Keys.shortsMode] = mode.name }
     suspend fun setHomeRedirect(enabled: Boolean) = store.edit { it[Keys.homeRedirect] = enabled }

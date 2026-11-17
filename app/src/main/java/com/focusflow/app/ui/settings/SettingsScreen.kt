@@ -39,6 +39,9 @@ class SettingsViewModel(
     private val settings: AppSettings,
     private val breaks: BreakConfigRepository,
 ) : ViewModel() {
+    val floatingEnabled = settings.floatingEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+    fun setFloating(v: Boolean) { viewModelScope.launch { settings.setFloatingEnabled(v) } }
+    fun resetBubble() { viewModelScope.launch { settings.resetBubblePosition() } }
     val breakConfig = breaks.global.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BreakConfig())
     fun saveBreakConfig(c: BreakConfig) { viewModelScope.launch { breaks.save(c) } }
 
@@ -60,6 +63,7 @@ fun SettingsScreen(onOpenBlocking: () -> Unit) {
     val mode by vm.defaultMode.collectAsStateWithLifecycle()
     val duration by vm.defaultDuration.collectAsStateWithLifecycle()
     val breaks by vm.breakConfig.collectAsStateWithLifecycle()
+    val floating by vm.floatingEnabled.collectAsStateWithLifecycle()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -139,6 +143,25 @@ fun SettingsScreen(onOpenBlocking: () -> Unit) {
 
         item {
             AppCard {
+                SectionLabel("FLOATING ASSISTANT")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Show bubble during sessions", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "A draggable bubble over the apps you can use, with your timer, tasks and breaks. " +
+                                "Needs the \"display over other apps\" permission (see Blocking).",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = floating, onCheckedChange = vm::setFloating)
+                }
+                OutlinedButton(onClick = vm::resetBubble) { Text("Reset bubble position") }
+            }
+        }
+
+        item {
+            AppCard {
                 SectionLabel("BLOCKING & YOUTUBE")
                 Text(
                     "Choose which apps are blocked during sessions, block YouTube Shorts and review permissions.",
@@ -153,7 +176,7 @@ fun SettingsScreen(onOpenBlocking: () -> Unit) {
             AppCard {
                 Text("More settings", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "Floating assistant, offline AI model, " +
+                    "Offline AI model, " +
                         "voice and data export/import are added in later phases.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
