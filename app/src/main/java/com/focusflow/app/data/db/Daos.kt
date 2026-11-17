@@ -179,6 +179,14 @@ interface SessionDao {
     )
     suspend fun getSessionTasks(sessionId: Long): List<SessionTaskRow>
 
+    @Query(
+        """
+        SELECT sub.* FROM subtasks sub JOIN session_tasks st ON st.taskId = sub.taskId
+        WHERE st.sessionId = :sessionId ORDER BY sub.position, sub.id
+        """,
+    )
+    fun observeSubtasksForSession(sessionId: Long): Flow<List<SubtaskEntity>>
+
     @Query("SELECT * FROM session_tasks")
     fun observeAllSessionTasks(): Flow<List<SessionTaskEntity>>
 

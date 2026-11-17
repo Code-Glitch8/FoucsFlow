@@ -6,8 +6,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -16,7 +23,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.focusflow.app.data.db.SessionMode
+import com.focusflow.app.data.repo.BreakConfigRepository
 import com.focusflow.app.data.settings.AppSettings
+import com.focusflow.app.domain.BreakConfig
 import com.focusflow.app.ui.common.AppCard
 import com.focusflow.app.ui.common.ScreenTitle
 import com.focusflow.app.ui.common.SectionLabel
@@ -26,7 +35,13 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class SettingsViewModel(private val settings: AppSettings) : ViewModel() {
+class SettingsViewModel(
+    private val settings: AppSettings,
+    private val breaks: BreakConfigRepository,
+) : ViewModel() {
+    val breakConfig = breaks.global.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BreakConfig())
+    fun saveBreakConfig(c: BreakConfig) { viewModelScope.launch { breaks.save(c) } }
+
     val theme = settings.themeMode.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ThemeMode.DARK)
     val defaultMode = settings.defaultMode.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SessionMode.TIMED)
     val defaultDuration = settings.defaultDurationMin.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 25)
@@ -40,10 +55,11 @@ private val DurationChoices = listOf(15, 25, 30, 45, 60, 90)
 
 @Composable
 fun SettingsScreen() {
-    val vm = containerViewModel { SettingsViewModel(it.settings) }
+    val vm = containerViewModel { SettingsViewModel(it.settings, it.breakConfig) }
     val theme by vm.theme.collectAsStateWithLifecycle()
     val mode by vm.defaultMode.collectAsStateWithLifecycle()
     val duration by vm.defaultDuration.collectAsStateWithLifecycle()
+    val breaks by vm.breakConfig.collectAsStateWithLifecycle()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -94,14 +110,56 @@ fun SettingsScreen() {
 
         item {
             AppCard {
-                Text("More settings", style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
+                SectionLabel("EARNED BREAKS")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Earn breaks by completing tasks", modifier = Modifier.weight(1f))
+                    Switch(checked = breaks.enabled, onCheckedChange = { vm.saveBreakConfig(breaks.copy(enabled = it)) })
+                }
+                if (breaks.enabled) {
+                    Stepper("Tasks for a short break", breaks.tasksForShortBreak, 1, 20) {
+                        vm.saveBreakConfig(breaks.copy(tasksForShortBreak = it))
+                    }
+                    Stepper("Short break (minutes)", breaks.shortBreakMinutes, 1, 60) {
+                        vm.saveBreakConfig(breaks.copy(shortBreakMinutes = it))
+                    }
+                    Stepper("Tasks for a long break", breaks.tasksForLongBreak, 1, 40) {
+                        vm.saveBreakConfig(breaks.copy(tasksForLongBreak = it))
+                    }
+                    Stepper("Long break (minutes)", breaks.longBreakMinutes, 1, 120) {
+                        vm.saveBreakConfig(breaks.copy(longBreakMinutes = it))
+                    }
+                    Text(
+                        "When one completed task qualifies for both, you get the long break only.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        item {
+            AppCard {
+                Text("More settings", style = MaterialTheme.typography.titleMedium)
                 Text(
                     "Break rules, blocked apps, YouTube Shorts, floating assistant, offline AI model, " +
                         "voice and data export/import are added in later phases.",
-                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun Stepper(label: String, value: Int, min: Int, max: Int, onChange: (Int) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, modifier = Modifier.weight(1f))
+        OutlinedButton(onClick = { onChange((value - 1).coerceAtLeast(min)) }, enabled = value > min) { Text("−") }
+        Text("$value", modifier = Modifier.padding(horizontal = 14.dp), style = MaterialTheme.typography.titleMedium)
+        OutlinedButton(onClick = { onChange((value + 1).coerceAtMost(max)) }, enabled = value < max) { Text("+") }
     }
 }

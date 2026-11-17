@@ -22,6 +22,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.focusflow.app.ui.common.rememberContainer
+import com.focusflow.app.ui.session.FocusScreen
+import com.focusflow.app.ui.session.SessionPrepScreen
 import com.focusflow.app.ui.settings.SettingsScreen
 import com.focusflow.app.ui.subjects.SubjectsScreen
 import com.focusflow.app.ui.tasks.TasksScreen
@@ -29,6 +31,7 @@ import com.focusflow.app.ui.theme.FocusFlowTheme
 import com.focusflow.app.ui.theme.ThemeMode
 
 private const val ROUTE_SUBJECTS = "subjects"
+private const val ROUTE_PREPARE = "prepare"
 
 /**
  * App shell: theme, edge-to-edge scaffold and bottom navigation.
@@ -79,9 +82,17 @@ fun FocusFlowRoot() {
                 composable(Destination.Tasks.route) {
                     TasksScreen(onManageSubjects = { navController.navigate(ROUTE_SUBJECTS) })
                 }
-                composable(Destination.Focus.route) { ShellScreen(Destination.Focus) }
+                composable(Destination.Focus.route) {
+                    FocusScreen(onStartSession = { navController.navigate(ROUTE_PREPARE) })
+                }
                 composable(Destination.Statistics.route) { ShellScreen(Destination.Statistics) }
                 composable(Destination.Settings.route) { SettingsScreen() }
+                composable(ROUTE_PREPARE) {
+                    SessionPrepScreen(
+                        onBack = { navController.popBackStack() },
+                        onManageSubjects = { navController.navigate(ROUTE_SUBJECTS) },
+                    )
+                }
                 composable(ROUTE_SUBJECTS) { SubjectsScreen(onBack = { navController.popBackStack() }) }
             }
         }
