@@ -15,21 +15,31 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.focusflow.app.ui.common.rememberContainer
+import com.focusflow.app.ui.settings.SettingsScreen
+import com.focusflow.app.ui.subjects.SubjectsScreen
+import com.focusflow.app.ui.tasks.TasksScreen
 import com.focusflow.app.ui.theme.FocusFlowTheme
+import com.focusflow.app.ui.theme.ThemeMode
+
+private const val ROUTE_SUBJECTS = "subjects"
 
 /**
  * App shell: theme, edge-to-edge scaffold and bottom navigation.
- * Screen bodies are filled in by later phases; until then each tab states
- * plainly what it will contain instead of pretending to work.
+ * Tabs whose phase has not been built yet say so plainly instead of pretending to work.
  */
 @Composable
 fun FocusFlowRoot() {
-    FocusFlowTheme {
+    val container = rememberContainer()
+    val themeMode by container.settings.themeMode.collectAsStateWithLifecycle(initialValue = ThemeMode.DARK)
+
+    FocusFlowTheme(themeMode) {
         val navController = rememberNavController()
         val backStack by navController.currentBackStackEntryAsState()
         val current = Destination.fromRoute(backStack?.destination?.route)
@@ -37,22 +47,25 @@ fun FocusFlowRoot() {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             bottomBar = {
-                NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                    Destination.entries.forEach { dest ->
-                        NavigationBarItem(
-                            selected = current == dest,
-                            onClick = {
-                                navController.navigate(dest.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
+                // Hidden on sub-screens such as Subjects & chapters.
+                if (current != null) {
+                    NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+                        Destination.entries.forEach { dest ->
+                            NavigationBarItem(
+                                selected = current == dest,
+                                onClick = {
+                                    navController.navigate(dest.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = { Icon(dest.icon, contentDescription = dest.label) },
-                            label = { Text(dest.label) },
-                        )
+                                },
+                                icon = { Icon(dest.icon, contentDescription = dest.label) },
+                                label = { Text(dest.label) },
+                            )
+                        }
                     }
                 }
             },
@@ -62,9 +75,14 @@ fun FocusFlowRoot() {
                 startDestination = Destination.start.route,
                 modifier = Modifier.padding(padding),
             ) {
-                Destination.entries.forEach { dest ->
-                    composable(dest.route) { ShellScreen(dest) }
+                composable(Destination.Home.route) { ShellScreen(Destination.Home) }
+                composable(Destination.Tasks.route) {
+                    TasksScreen(onManageSubjects = { navController.navigate(ROUTE_SUBJECTS) })
                 }
+                composable(Destination.Focus.route) { ShellScreen(Destination.Focus) }
+                composable(Destination.Statistics.route) { ShellScreen(Destination.Statistics) }
+                composable(Destination.Settings.route) { SettingsScreen() }
+                composable(ROUTE_SUBJECTS) { SubjectsScreen(onBack = { navController.popBackStack() }) }
             }
         }
     }
