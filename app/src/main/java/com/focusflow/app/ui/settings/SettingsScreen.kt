@@ -54,7 +54,7 @@ class SettingsViewModel(
 private val DurationChoices = listOf(15, 25, 30, 45, 60, 90)
 
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(onOpenBlocking: () -> Unit) {
     val vm = containerViewModel { SettingsViewModel(it.settings, it.breakConfig) }
     val theme by vm.theme.collectAsStateWithLifecycle()
     val mode by vm.defaultMode.collectAsStateWithLifecycle()
@@ -139,9 +139,21 @@ fun SettingsScreen() {
 
         item {
             AppCard {
+                SectionLabel("BLOCKING & YOUTUBE")
+                Text(
+                    "Choose which apps are blocked during sessions, block YouTube Shorts and review permissions.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedButton(onClick = onOpenBlocking) { Text("Open blocking settings") }
+            }
+        }
+
+        item {
+            AppCard {
                 Text("More settings", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "Break rules, blocked apps, YouTube Shorts, floating assistant, offline AI model, " +
+                    "Floating assistant, offline AI model, " +
                         "voice and data export/import are added in later phases.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

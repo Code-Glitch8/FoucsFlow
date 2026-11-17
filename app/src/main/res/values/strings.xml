@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">FocusFlow</string>
+    <string name="accessibility_service_description">FocusFlow uses this to notice which app is in front so it can close apps you chose to block during a study session, and to recognise the YouTube Shorts screen so it can take you back to normal YouTube. It does not read your messages or other content, and nothing leaves your phone.</string>
 </resources>

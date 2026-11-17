@@ -21,6 +21,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.focusflow.app.ui.blocking.BlockingScreen
+import com.focusflow.app.ui.blocking.DetectorTestScreen
 import com.focusflow.app.ui.common.rememberContainer
 import com.focusflow.app.ui.session.FocusScreen
 import com.focusflow.app.ui.session.SessionPrepScreen
@@ -32,6 +34,8 @@ import com.focusflow.app.ui.theme.ThemeMode
 
 private const val ROUTE_SUBJECTS = "subjects"
 private const val ROUTE_PREPARE = "prepare"
+private const val ROUTE_BLOCKING = "blocking"
+private const val ROUTE_DETECTOR = "detector"
 
 /**
  * App shell: theme, edge-to-edge scaffold and bottom navigation.
@@ -86,7 +90,16 @@ fun FocusFlowRoot() {
                     FocusScreen(onStartSession = { navController.navigate(ROUTE_PREPARE) })
                 }
                 composable(Destination.Statistics.route) { ShellScreen(Destination.Statistics) }
-                composable(Destination.Settings.route) { SettingsScreen() }
+                composable(Destination.Settings.route) {
+                    SettingsScreen(onOpenBlocking = { navController.navigate(ROUTE_BLOCKING) })
+                }
+                composable(ROUTE_BLOCKING) {
+                    BlockingScreen(
+                        onBack = { navController.popBackStack() },
+                        onTestDetector = { navController.navigate(ROUTE_DETECTOR) },
+                    )
+                }
+                composable(ROUTE_DETECTOR) { DetectorTestScreen(onBack = { navController.popBackStack() }) }
                 composable(ROUTE_PREPARE) {
                     SessionPrepScreen(
                         onBack = { navController.popBackStack() },

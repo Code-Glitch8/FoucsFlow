@@ -69,8 +69,11 @@ class FocusSessionService : Service() {
                 return@collectLatest
             }
             notify(buildNotification(active))
+            val usage = UsageStatsMonitor(this@FocusSessionService)
+            val essentials = EssentialApps.resolve(this@FocusSessionService)
             // Re-checked every second: cheap, and robust to clock changes and doze.
             while (scope.isActive) {
+                runUsageStatsFallback(usage, essentials)
                 val status = repo.tick(active.session.id)
                 if (status == SessionStatus.COMPLETED) {
                     postCompletion(active)
@@ -79,6 +82,22 @@ class FocusSessionService : Service() {
                 if (status != SessionStatus.ACTIVE) return@collectLatest
                 delay(1_000)
             }
+        }
+    }
+
+    /**
+     * Only used when the accessibility service is off. Needs usage access plus "display over other
+     * apps" (which is what lets Android show the block screen from the background).
+     */
+    private fun runUsageStatsFallback(usage: UsageStatsMonitor, essentials: Set<String>) {
+        if (FocusAccessibilityService.connected) return
+        if (!Permissions.usageAccessGranted(this) || !Permissions.overlayGranted(this)) return
+        val pkg = usage.poll() ?: return
+        val container = (application as FocusFlowApp).container
+        val now = System.currentTimeMillis()
+        val snap = container.blockState.snapshot.value
+        if (com.focusflow.app.domain.BlockPolicy.shouldBlockApp(pkg, snap.policyInput(now, essentials))) {
+            BlockActivity.show(this, pkg)
         }
     }
 

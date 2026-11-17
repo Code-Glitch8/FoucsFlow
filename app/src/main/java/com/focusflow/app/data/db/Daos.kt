@@ -260,6 +260,12 @@ interface AppRuleDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBlocked(rules: List<BlockedApplicationEntity>)
 
+    @Query("DELETE FROM blocked_applications WHERE presetId IS NULL AND packageName = :packageName")
+    suspend fun deleteGlobalBlocked(packageName: String)
+
+    @Query("DELETE FROM allowed_applications WHERE presetId IS NULL AND packageName = :packageName")
+    suspend fun deleteGlobalAllowed(packageName: String)
+
     @Query("SELECT * FROM allowed_applications WHERE presetId IS NULL ORDER BY label COLLATE NOCASE")
     fun observeGlobalAllowed(): Flow<List<AllowedApplicationEntity>>
 

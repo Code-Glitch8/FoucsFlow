@@ -107,6 +107,9 @@ class SessionRepository(
         }
     }
 
+    /** Lightweight stream of just the running session row (no tasks), for the blocking engine. */
+    fun observeActiveSession(): Flow<StudySessionEntity?> = sessionDao.observeActive()
+
     suspend fun hasActive(): Boolean = sessionDao.getActive() != null
 
     private suspend fun resolveBreakConfig(s: StudySessionEntity, global: BreakConfigurationEntity?): BreakConfig {
