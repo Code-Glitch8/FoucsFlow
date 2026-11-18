@@ -80,6 +80,7 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.glance.appwidget)
     implementation(libs.kotlinx.coroutines.android)
 
     // On-device LLM runtime (runs fully offline; model is downloaded by the user on request).
