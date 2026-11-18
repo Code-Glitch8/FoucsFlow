@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -443,17 +444,33 @@ fun SessionPrepScreen(presetId: Long? = null, onBack: () -> Unit, onManageSubjec
                         }
                         if (customDuration || form.durationMinutes !in DurationChoices) {
                             var text by remember { mutableStateOf(form.durationMinutes.toString()) }
-                            OutlinedTextField(
-                                value = text,
-                                onValueChange = { v ->
-                                    text = v.filter(Char::isDigit).take(3)
-                                    text.toIntOrNull()?.takeIf { it > 0 }?.let(vm::setDuration)
-                                },
-                                label = { Text("Minutes") },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.fillMaxWidth(),
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(onClick = {
+                                    val next = (form.durationMinutes - 1).coerceAtLeast(1)
+                                    text = next.toString()
+                                    vm.setDuration(next)
+                                }) {
+                                    Icon(Icons.Outlined.Remove, contentDescription = "Decrease duration")
+                                }
+                                OutlinedTextField(
+                                    value = text,
+                                    onValueChange = { v ->
+                                        text = v.filter(Char::isDigit).take(3)
+                                        text.toIntOrNull()?.takeIf { it > 0 }?.let(vm::setDuration)
+                                    },
+                                    label = { Text("Minutes") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    modifier = Modifier.weight(1f),
+                                )
+                                IconButton(onClick = {
+                                    val next = (form.durationMinutes + 1).coerceAtMost(600)
+                                    text = next.toString()
+                                    vm.setDuration(next)
+                                }) {
+                                    Icon(Icons.Outlined.Add, contentDescription = "Increase duration")
+                                }
+                            }
                         }
                     } else {
                         Text(
@@ -461,6 +478,23 @@ fun SessionPrepScreen(presetId: Long? = null, onBack: () -> Unit, onManageSubjec
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                    }
+                }
+            }
+
+            // ---- SnapGPT launch preference ----
+            item {
+                AppCard {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Launch SnapGPT with this profile", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "When this saved profile is started from its home-screen widget, open your installed SnapGPT assistant too.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(checked = form.launchSnapGpt, onCheckedChange = vm::setLaunchSnapGpt)
                     }
                 }
             }
