@@ -172,8 +172,8 @@ fun HistoryScreen(onBack: () -> Unit, onOpenSession: (Long) -> Unit) {
 fun SessionRow(
     s: StudySessionEntity,
     data: StudyData,
-    onClick: () -> Unit,
     syncedFromOtherPhone: Boolean = false,
+    onClick: () -> Unit,
 ) {
     val links = data.sessionTasks.filter { it.sessionId == s.id }
     val chapterNames = data.chapters.filter { it.id in data.chapterIdsOf(s.id) }.joinToString(", ") { it.name }

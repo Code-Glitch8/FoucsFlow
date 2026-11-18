@@ -79,7 +79,7 @@ class FocusSessionService : Service() {
             val assistant = overlay ?: FloatingAssistant(this@FocusSessionService, container).also { overlay = it }
             while (scope.isActive) {
                 val wantBubble = container.settings.floatingEnabled.first() &&
-                    Permissions.overlayGranted(this@FocusSessionService) &&
+                    Permissions.overlayGranted(this@FocusSessionService)
                 if (wantBubble) assistant.show() else assistant.hide()
                 runUsageStatsFallback(usage, essentials)
                 val status = repo.tick(active.session.id)
