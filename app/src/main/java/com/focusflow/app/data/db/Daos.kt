@@ -117,6 +117,10 @@ interface SessionDao {
     @Update
     suspend fun update(session: StudySessionEntity)
 
+    /** Removes finished sessions; their task links, chapter links and summaries go with them (cascade). Tasks stay. */
+    @Query("DELETE FROM study_sessions WHERE status != 'ACTIVE'")
+    suspend fun deleteFinished()
+
     @Query("SELECT * FROM study_sessions WHERE id = :id")
     suspend fun getById(id: Long): StudySessionEntity?
 

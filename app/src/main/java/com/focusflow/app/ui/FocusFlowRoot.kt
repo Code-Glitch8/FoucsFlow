@@ -43,6 +43,7 @@ private const val ROUTE_SUMMARY = "summary/{id}"
 private const val ROUTE_BLOCKING = "blocking"
 private const val ROUTE_DETECTOR = "detector"
 private const val ROUTE_AI = "ai"
+private const val ROUTE_DATA = "data"
 
 /**
  * App shell: theme, edge-to-edge scaffold and bottom navigation.
@@ -136,6 +137,7 @@ fun FocusFlowRoot() {
                     SettingsScreen(
                         onOpenBlocking = { navController.navigate(ROUTE_BLOCKING) },
                         onOpenAi = { navController.navigate(ROUTE_AI) },
+                        onOpenData = { navController.navigate(ROUTE_DATA) },
                     )
                 }
                 composable(ROUTE_BLOCKING) {
@@ -144,6 +146,7 @@ fun FocusFlowRoot() {
                         onTestDetector = { navController.navigate(ROUTE_DETECTOR) },
                     )
                 }
+                composable(ROUTE_DATA) { com.focusflow.app.ui.settings.DataSettingsScreen(onBack = { navController.popBackStack() }) }
                 composable(ROUTE_AI) { com.focusflow.app.ui.settings.AiSettingsScreen(onBack = { navController.popBackStack() }) }
                 composable(ROUTE_DETECTOR) { DetectorTestScreen(onBack = { navController.popBackStack() }) }
                 composable(

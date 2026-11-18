@@ -60,6 +60,7 @@ class AppSettings(private val context: Context) {
 
     suspend fun setFloatingEnabled(enabled: Boolean) = store.edit { it[Keys.floatingEnabled] = enabled }
     suspend fun setBubblePosition(x: Int, y: Int) = store.edit { it[Keys.bubbleX] = x; it[Keys.bubbleY] = y }
+    suspend fun clearAll() = store.edit { it.clear() }
     suspend fun resetBubblePosition() = store.edit { it.remove(Keys.bubbleX); it.remove(Keys.bubbleY) }
 
     suspend fun setShortsMode(mode: ShortsMode) = store.edit { it[Keys.shortsMode] = mode.name }

@@ -58,7 +58,7 @@ class SettingsViewModel(
 private val DurationChoices = listOf(15, 25, 30, 45, 60, 90)
 
 @Composable
-fun SettingsScreen(onOpenBlocking: () -> Unit, onOpenAi: () -> Unit) {
+fun SettingsScreen(onOpenBlocking: () -> Unit, onOpenAi: () -> Unit, onOpenData: () -> Unit) {
     val vm = containerViewModel { SettingsViewModel(it.settings, it.breakConfig) }
     val theme by vm.theme.collectAsStateWithLifecycle()
     val mode by vm.defaultMode.collectAsStateWithLifecycle()
@@ -182,6 +182,18 @@ fun SettingsScreen(onOpenBlocking: () -> Unit, onOpenAi: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 OutlinedButton(onClick = onOpenAi) { Text("Open AI & voice settings") }
+            }
+        }
+
+        item {
+            AppCard {
+                SectionLabel("DATA, PRESETS & PRIVACY")
+                Text(
+                    "Manage presets, export or import a backup, and reset your data.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedButton(onClick = onOpenData) { Text("Open data settings") }
             }
         }
     }
