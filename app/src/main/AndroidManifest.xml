@@ -8,8 +8,10 @@
     <!-- Android 13+: lets the session notification be shown. The app works if you decline. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Used ONLY when you press Download for an offline AI model. Nothing else touches the network. -->
+    <!-- API-based AI and direct local Wi-Fi sync. No cloud history database is used. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Voice input for describing what you want to study. Asked for when you tap the microphone. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
@@ -43,10 +45,6 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.FocusFlow">
-
-        <!-- Needed only if you choose the optional GPU backend of the AI runtime. -->
-        <uses-native-library android:name="libvndksupport.so" android:required="false" />
-        <uses-native-library android:name="libOpenCL.so" android:required="false" />
 
         <activity
             android:name=".MainActivity"

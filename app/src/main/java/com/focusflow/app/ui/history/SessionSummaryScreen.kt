@@ -84,7 +84,7 @@ class SessionSummaryViewModel(
                     unfinishedTasks = rows.filter { !it.link.completed }.map { it.title },
                 )
                 val r = ai.summarize(facts)
-                history.saveSummary(sessionId, r.text, r.source)
+                if (r.text.isNotBlank()) history.saveSummary(sessionId, r.text, r.source)
                 note.value = r.note
             } finally {
                 working.value = false
@@ -140,9 +140,10 @@ fun SessionSummaryScreen(sessionId: Long, onBack: () -> Unit, onStartNext: () ->
         item {
             AppCard {
                 val label = when (summary?.source) {
-                    SummarySource.ON_DEVICE_AI -> "WRITTEN BY ON-DEVICE AI"
-                    SummarySource.TEMPLATE -> "PLAIN SUMMARY (NOT AI)"
-                    null -> "SUMMARY"
+                    SummarySource.API_AI -> "WRITTEN BY API AI"
+                    SummarySource.ON_DEVICE_AI -> "LEGACY ON-DEVICE AI SUMMARY"
+                    SummarySource.TEMPLATE -> "LEGACY TEMPLATE SUMMARY"
+                    null -> "API AI SUMMARY"
                 }
                 SectionLabel(label)
                 Text(

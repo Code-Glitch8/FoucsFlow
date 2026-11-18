@@ -10,14 +10,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -26,15 +32,19 @@ import androidx.lifecycle.viewModelScope
 import com.focusflow.app.data.db.SessionMode
 import com.focusflow.app.data.repo.BreakConfigRepository
 import com.focusflow.app.data.settings.AppSettings
+import com.focusflow.app.data.sync.LocalSyncRepository
 import com.focusflow.app.domain.BreakConfig
+import com.focusflow.app.service.WifiPeerSyncManager
 import com.focusflow.app.ui.common.AppCard
 import com.focusflow.app.ui.common.ScreenTitle
 import com.focusflow.app.ui.common.SectionLabel
 import com.focusflow.app.ui.common.containerViewModel
 import com.focusflow.app.ui.theme.ThemeMode
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 class SettingsViewModel(
     private val settings: AppSettings,
@@ -53,6 +63,18 @@ class SettingsViewModel(
     fun setTheme(m: ThemeMode) { viewModelScope.launch { settings.setThemeMode(m) } }
     fun setDefaultMode(m: SessionMode) { viewModelScope.launch { settings.setDefaultMode(m) } }
     fun setDefaultDuration(min: Int) { viewModelScope.launch { settings.setDefaultDurationMin(min) } }
+}
+
+class WifiSyncSettingsViewModel(
+    private val sync: LocalSyncRepository,
+    private val wifiSync: WifiPeerSyncManager,
+) : ViewModel() {
+    val pairingCode = sync.pairingCode
+    val status = wifiSync.status
+    fun save(code: String): Boolean = sync.savePairingCode(code)
+    fun clear() = sync.clearPairingCode()
+    fun syncNow() = wifiSync.syncNow()
+    fun generate(): String = UUID.randomUUID().toString().also { sync.savePairingCode(it) }
 }
 
 private val DurationChoices = listOf(15, 25, 30, 45, 60, 90)
@@ -149,8 +171,8 @@ fun SettingsScreen(onOpenBlocking: () -> Unit, onOpenAi: () -> Unit, onOpenData:
                     Column(Modifier.weight(1f)) {
                         Text("Show bubble during sessions", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "A draggable bubble over the apps you can use, with your timer, tasks and breaks. " +
-                                "Needs the \"display over other apps\" permission (see Blocking).",
+                            "A draggable bubble over other apps, with your timer, tasks and breaks. " +
+                                "Enable “display over other apps” in Blocking settings before starting a session.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -165,7 +187,7 @@ fun SettingsScreen(onOpenBlocking: () -> Unit, onOpenAi: () -> Unit, onOpenData:
             AppCard {
                 SectionLabel("BLOCKING & YOUTUBE")
                 Text(
-                    "Choose which apps are blocked during sessions, block YouTube Shorts and review permissions.",
+                    "Choose blocked and allowed apps, block Shorts, and review the permissions needed for blocking and the floating assistant.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -175,15 +197,17 @@ fun SettingsScreen(onOpenBlocking: () -> Unit, onOpenAi: () -> Unit, onOpenData:
 
         item {
             AppCard {
-                SectionLabel("OFFLINE AI & VOICE")
+                SectionLabel("AI API & VOICE")
                 Text(
-                    "Download or import an on-device model, and choose how voice input behaves.",
+                    "Add API keys and choose the model used for task generation and study summaries. No built-in AI or rule-based fallback is used.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                OutlinedButton(onClick = onOpenAi) { Text("Open AI & voice settings") }
+                OutlinedButton(onClick = onOpenAi) { Text("Open AI API & voice settings") }
             }
         }
+
+        item { WifiSyncSettingsCard() }
 
         item {
             AppCard {
@@ -196,6 +220,56 @@ fun SettingsScreen(onOpenBlocking: () -> Unit, onOpenAi: () -> Unit, onOpenData:
                 OutlinedButton(onClick = onOpenData) { Text("Open data settings") }
             }
         }
+    }
+}
+
+@Composable
+private fun WifiSyncSettingsCard() {
+    val vm = containerViewModel { WifiSyncSettingsViewModel(it.sync, it.wifiSync) }
+    val savedCode by vm.pairingCode.collectAsStateWithLifecycle()
+    val status by vm.status.collectAsStateWithLifecycle()
+    var code by remember { mutableStateOf("") }
+
+    androidx.compose.runtime.LaunchedEffect(savedCode) {
+        if (code.isBlank() && savedCode != null) code = savedCode.orEmpty()
+    }
+
+    AppCard {
+        SectionLabel("SYNC WITH YOUR OTHER PHONE")
+        Text(
+            "When both phones are on the same Wi-Fi and FocusFlow is running, they discover each other and exchange completed study history directly. " +
+                "No account, cloud database or server is used. Set the exact same sync code on both phones. A router setting called AP/client isolation can prevent local devices from connecting.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        OutlinedTextField(
+            value = code,
+            onValueChange = { code = it.take(128) },
+            label = { Text("Shared sync code (10–128 characters)") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { vm.save(code) }) { Text("Save code") }
+            OutlinedButton(onClick = {
+                code = vm.generate()
+            }) { Text("Generate code") }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                if (savedCode == null) "Not paired" else "Paired on this phone",
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            TextButton(onClick = { vm.clear(); code = "" }, enabled = savedCode != null) { Text("Clear") }
+        }
+        Text(status, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedButton(onClick = vm::syncNow, enabled = savedCode != null) { Text("Sync now") }
+        Text(
+            "Use the same generated code on the second phone. Sync transfers completed sessions, chapters and task results; active sessions stay on the phone where they started. Data is stored locally and shared only with a device that knows the code.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

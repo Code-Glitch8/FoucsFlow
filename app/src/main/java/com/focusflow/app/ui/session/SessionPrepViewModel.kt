@@ -69,7 +69,7 @@ data class Proposal(val title: String, val minutes: Int?, val subtasks: List<Str
 data class AiUiState(
     val generating: Boolean = false,
     val proposals: List<Proposal> = emptyList(),
-    val origin: TaskOrigin = TaskOrigin.RULE_BASED,
+    val origin: TaskOrigin = TaskOrigin.API_AI,
     val note: String? = null,
     val listening: Boolean = false,
     val partial: String = "",

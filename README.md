@@ -1,62 +1,49 @@
-# FocusFlow
+# FoucsFlow
 
-An offline-first, native Android study-focus app (Kotlin, Jetpack Compose, Material 3, Room, DataStore, Coroutines/Flow).
-No accounts, no analytics, no ads, no uploads. Everything is stored on the phone.
+A native Android study-focus app built with Kotlin, Jetpack Compose, Room, DataStore and Coroutines.
 
 ## Getting the APK
 
-Every push to `main` runs the GitHub Actions workflow (`.github/workflows/android.yml`), which runs the unit tests and builds a debug APK.
-Open the latest run under **Actions** and download the **focusflow-debug-apk** artifact (also **unit-test-reports**).
-To build locally: `./gradlew testDebugUnitTest assembleDebug` (JDK 17, Android SDK 36).
+Every push runs **Android CI**, which runs the unit tests and builds a debug APK. Open the latest run under **Actions** and download the `focusflow-debug-apk` artifact (the unit test report is uploaded separately).
 
-## What it does
+To build locally: `./gradlew testDebugUnitTest assembleDebug` (JDK 17 and Android SDK 36).
 
-| Area | What works |
-|---|---|
-| Tabs | Home, Tasks, Focus, Statistics, Settings. Dark theme by default, light available. |
-| Subjects & chapters | Built-in and custom subjects; reusable chapters with search, add, rename, delete, multi-select. |
-| Session setup | Subject, chapters, text or voice description, editable tasks with subtasks and estimates, timed (15/25/30/45/60/90/custom) or open-ended, strict or normal, presets. |
-| Tasks from your description | On-device AI when a model is installed, otherwise simple rules. Suggestions are always labelled with their source, shown for review, and **never** start or complete anything until you accept them. |
-| Focus session | Foreground service with persistent notification; timing is derived from stored timestamps so app restarts or process death don't change it; break time is excluded from focus time. |
-| Earned breaks | Short/long breaks earned by tasks *you* mark done, configurable counts and lengths. |
-| Blocking | Accessibility-service app blocking with a block screen, allowed list, essentials (calls, phone, settings, etc.) never blocked, emergency exit that is separate from ordinary controls. Optional usage-stats fallback. |
-| YouTube Shorts | Block Shorts while leaving normal YouTube usable; optional redirect away from the Home feed; a "Test the detector" screen. |
-| Floating assistant | Draggable overlay bubble (position remembered) with timer, tasks and breaks. |
-| History & summaries | Filter by date, subject, chapter, type. Each finished session gets a summary labelled "on-device AI" or "plain summary (not AI)". Numbers in AI text are checked against the real session data. |
-| Unfinished work | Open tasks stay on your list with their subject/chapter and can be added to a new session without duplicates. |
-| Statistics | Daily/weekly focus charts, time per subject and chapter, sessions, done/unfinished tasks, last studied, streak. Time is never presented as mastery; optional self-rated confidence (1–5) is kept separate. |
-| Data | Export/import backup, delete history, reset everything, preset management. |
+## Features
 
-## Offline AI and voice
+- Subjects, chapters, custom chapters, reusable presets and editable study tasks.
+- Timed and open-ended focus sessions, strict/normal mode, session timer and ongoing notification.
+- User-completed tasks, configurable earned breaks and unfinished-work tracking.
+- Accessibility-based app blocking, allowed apps, YouTube Shorts detection and a dedicated blocking page.
+- Draggable floating assistant with timer, tasks and break controls.
+- Session history, focus statistics, streaks and chapter statistics.
+- App icons in the blocked/allowed application picker.
+- AI task suggestions and session summaries through a user-configured API.
+- Direct local-network history synchronisation between two paired phones.
 
-* AI uses the on-device LiteRT-LM runtime. **No model is bundled.** In Settings → Offline AI & voice you can download one (Qwen3 0.6B ≈ 0.6 GB or Gemma 4 E2B ≈ 2.6 GB) after an explicit confirmation, or import a `.litertlm` file you downloaded yourself. This download is the only use of the internet.
-* The app checks free storage before downloading and total RAM before loading, and falls back to rules if the model fails or times out.
-* Voice input uses Android's `SpeechRecognizer`. By default it only runs with an **on-device** recognizer; if your phone has none you can type instead, or switch the setting to allow Android's default recognizer (which may send audio to the speech provider).
+## AI API setup
 
-## Honest limitations
+Open Settings → **AI API & voice**. Add a Gemini API profile or an OpenAI-compatible endpoint, enter its model ID and API key, save it and test it. Multiple profiles can be saved and switched. API keys and profile details are encrypted locally using Android Keystore and are not included in the app's Room backup or Wi-Fi sync.
 
-* **Not tested on a physical device.** The app compiles, the unit tests pass in CI, but accessibility blocking, the overlay bubble, the foreground service, voice and the on-device model have not been exercised on real hardware by the author. Expect rough edges and please report them.
-* Android cannot truly lock a phone. A determined user can disable the accessibility service, force-stop the app, reboot into safe mode, or uninstall. "Strict" means the app makes leaving harder, not impossible.
-* The YouTube Shorts detector relies on YouTube's current screen layout (view IDs and English tab labels). YouTube can change that at any time, and non-English interfaces may not be recognised. Use the detector test screen to check your version. Default mode blocks Shorts only during focus sessions.
-* Blocked apps are sent to the home screen and a block screen is shown; some Android versions limit launching activities from the background, so the block screen may occasionally not appear even though the app is closed.
-* AI output can be wrong. Task suggestions that mention topics you didn't write are dropped, and summaries with unknown numbers are replaced, but you should still review them. Small models are weaker than cloud assistants.
-* Gemma/other gated models may require accepting a license in a browser; use "Import model file" in that case. Model download URLs point at Hugging Face and may change.
-* Backups copy the whole database and are applied the next time the app starts. They don't include theme/other settings or AI models. Backups from a newer app version are rejected.
-* Offline speech needs the language pack for your language to be installed.
-* Statistics attribute a session to the day it started; a session covering several chapters shares its time equally between them.
+There is deliberately **no bundled model and no rule-based AI fallback**. When no profile is configured or a request fails, the app reports the problem; tasks can still be added manually. The API provider receives the prompt and session facts needed to generate the requested output. Voice recognition has its own offline-only setting.
 
-## Architecture
+## Local Wi-Fi sync
 
-MVVM, manual dependency container (`AppContainer`), single Activity with Compose navigation.
+Open Settings → **Sync with your other phone** on both phones. Generate a sync code on one phone and enter exactly the same code on the other. When FocusFlow is running and both devices are reachable on the same local Wi-Fi network, they discover one another using LAN broadcast and exchange encrypted, completed-session snapshots. No login, cloud database or external sync server is used.
 
-* `data/db` – Room entities, DAOs, schema (version 1, schema export enabled, destructive migration deliberately off).
-* `data/repo` – repositories (sessions, tasks, subjects, presets, blocking rules, history, backup).
-* `data/settings` – DataStore preferences.
-* `domain` – pure, unit-tested logic: session clock, break rules, task normalisation, blocking policy, YouTube screen classifier, statistics.
-* `service` – foreground session service, accessibility service, block screen, overlay bubble, usage-stats monitor.
-* `ai`, `speech` – model manager, LiteRT-LM wrapper, rule-based extractor, reply parser with grounding checks, template summaries, speech recogniser.
-* `ui` – Compose screens.
+The sync payload uses AES-GCM encryption derived from the shared code. Each session retains a stable origin-device ID so a relayed record is not duplicated. The merged history feeds the session-history, focus-time, session-count and streak views. Active sessions stay local to the phone where they started. API credentials are never sent between phones.
 
-## Permissions
+Sync depends on local network broadcast and device-to-device traffic being allowed by the router. A network with AP/client isolation can prevent it. Android may pause background processes when the app is not running; when FocusFlow is opened again, it retries discovery and synchronisation. Use **Sync now** to request an immediate discovery pass.
 
-Notifications (ongoing session), Accessibility (app blocking, YouTube detection — reads package names, and screen elements only inside YouTube), Display over other apps (block screen and bubble), Usage access (optional fallback), Microphone (voice input, asked on tap), Internet (model download only).
+## Blocking and Android permissions
+
+- Enable the FocusFlow Accessibility service for app and YouTube Shorts detection.
+- Allow display over other apps for the dedicated block screen and floating assistant.
+- Notification permission allows the ongoing session notification.
+- Usage access is an optional fallback if Accessibility is disabled.
+- Microphone permission is requested only when voice input is started.
+
+A normal Android application cannot make the phone impossible to leave. Accessibility can be disabled in system settings, and Android/OEM battery controls may stop background work. Android can also restrict opening a blocking Activity from the background. For these reasons, test blocking and overlays on the target phone and keep essential calling/system apps accessible.
+
+## Local test status
+
+The GitHub Actions workflow is the source of truth for compilation and unit-test results. It does not replace testing on two physical phones: local broadcast discovery, router isolation, OEM battery restrictions, accessibility timing and overlay behaviour need to be checked on the actual devices.

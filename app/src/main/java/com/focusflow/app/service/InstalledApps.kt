@@ -4,16 +4,19 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.graphics.drawable.Drawable
 import com.focusflow.app.data.db.AppCategory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-data class InstalledApp(val packageName: String, val label: String, val category: AppCategory)
+data class InstalledApp(
+    val packageName: String,
+    val label: String,
+    val category: AppCategory,
+    val icon: Drawable,
+)
 
-/**
- * Lists launchable apps. Uses a <queries> launcher-intent declaration rather than the broad
- * QUERY_ALL_PACKAGES permission. The list never leaves the device.
- */
+/** Lists launchable apps and their icons without requesting QUERY_ALL_PACKAGES. */
 object InstalledApps {
     private val knownSocial = setOf(
         "com.instagram.android", "com.facebook.katana", "com.facebook.orca", "com.snapchat.android",
@@ -46,16 +49,19 @@ object InstalledApps {
         val pm = context.packageManager
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         pm.queryIntentActivities(intent, PackageManager.MATCH_ALL)
-            .map { it.activityInfo }
-            .filter { it.packageName != context.packageName }
-            .distinctBy { it.packageName }
-            .map {
-                InstalledApp(
-                    packageName = it.packageName,
-                    label = it.loadLabel(pm).toString(),
-                    category = categoryOf(it.packageName, it.applicationInfo),
-                )
+            .mapNotNull { resolve ->
+                val activity = resolve.activityInfo ?: return@mapNotNull null
+                if (activity.packageName == context.packageName) return@mapNotNull null
+                runCatching {
+                    InstalledApp(
+                        packageName = activity.packageName,
+                        label = resolve.loadLabel(pm).toString(),
+                        category = categoryOf(activity.packageName, activity.applicationInfo),
+                        icon = resolve.loadIcon(pm),
+                    )
+                }.getOrNull()
             }
+            .distinctBy { it.packageName }
             .sortedBy { it.label.lowercase() }
     }
 }

@@ -3,6 +3,10 @@ package com.focusflow.app.ui.session
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -56,6 +60,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.focusflow.app.data.db.SessionMode
 import com.focusflow.app.data.repo.DraftTask
 import com.focusflow.app.service.FocusSessionService
+import com.focusflow.app.service.Permissions
 import com.focusflow.app.ui.common.AppCard
 import com.focusflow.app.ui.common.ScreenTitle
 import com.focusflow.app.ui.common.SectionLabel
@@ -102,13 +107,33 @@ fun SessionPrepScreen(presetId: Long? = null, onBack: () -> Unit, onManageSubjec
         if (ok) vm.startVoice() else micLauncher.launch(Manifest.permission.RECORD_AUDIO)
     }
 
-    // Notification permission only affects the ongoing notification, never the session itself.
+    // Ask for overlay permission before starting so the floating assistant does not fail silently.
+    // Notification permission remains optional and never prevents the study timer from starting.
     val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { vm.start() }
-    fun startWithPermission() {
+    fun startWithNotificationPermission() {
         val needs = Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
         if (needs) notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) else vm.start()
+    }
+    val overlayLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (Permissions.overlayGranted(context)) {
+            startWithNotificationPermission()
+        } else {
+            Toast.makeText(context, "Allow display over other apps to show the floating FocusFlow assistant.", Toast.LENGTH_LONG).show()
+        }
+    }
+    fun startWithPermission() {
+        if (Permissions.overlayGranted(context)) {
+            startWithNotificationPermission()
+        } else {
+            overlayLauncher.launch(
+                Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:${context.packageName}"),
+                ),
+            )
+        }
     }
 
     Box(Modifier.fillMaxSize()) {

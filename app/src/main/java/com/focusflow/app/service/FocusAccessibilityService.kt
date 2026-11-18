@@ -5,7 +5,6 @@ import android.content.Intent
 import android.os.Build
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
-import android.widget.Toast
 import com.focusflow.app.FocusFlowApp
 import com.focusflow.app.domain.BlockPolicy
 import com.focusflow.app.domain.UiNode
@@ -42,12 +41,15 @@ class FocusAccessibilityService : AccessibilityService() {
         if (pkg == packageName) return
         val now = System.currentTimeMillis()
 
-        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+            event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED
+        ) {
             handleForegroundApp(pkg, now)
         }
         if (pkg == YouTubeUiClassifier.PACKAGE &&
             (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
-                event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)
+                event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED ||
+                event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED)
         ) {
             handleYouTube(now)
         }
@@ -86,7 +88,7 @@ class FocusAccessibilityService : AccessibilityService() {
                 result.screen == YouTubeScreen.SHORTS_PLAYER && shorts -> {
                     lastYoutubeActionAt = now
                     DetectorDebug.shortsBlocked()
-                    leaveShorts(root)
+                    leaveShorts()
                 }
                 result.screen == YouTubeScreen.HOME_FEED && redirect -> {
                     if (clickTab(root) { YouTubeUiClassifier.isSubscriptionsTabLabel(it) }) {
@@ -100,12 +102,10 @@ class FocusAccessibilityService : AccessibilityService() {
         }
     }
 
-    /** Prefer switching to the Home tab; fall back to Back (e.g. a Shorts link opened directly). */
-    private fun leaveShorts(root: AccessibilityNodeInfo) {
-        Toast.makeText(this, "YouTube Shorts is blocked by FocusFlow", Toast.LENGTH_SHORT).show()
-        if (!clickTab(root) { YouTubeUiClassifier.isHomeTabLabel(it) }) {
-            performGlobalAction(GLOBAL_ACTION_BACK)
-        }
+    /** Leave Shorts and show the same dedicated block page used for blocked apps. */
+    private fun leaveShorts() {
+        performGlobalAction(GLOBAL_ACTION_HOME)
+        BlockActivity.show(this, YouTubeUiClassifier.PACKAGE, shorts = true)
     }
 
     private fun clickTab(root: AccessibilityNodeInfo, matches: (String?) -> Boolean): Boolean {

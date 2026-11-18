@@ -16,5 +16,6 @@ class FocusFlowApp : Application() {
         super.onCreate()
         container = AppContainer(this)
         appScope.launch { container.subjects.ensureBuiltIns() }
+        container.wifiSync.start(appScope)
     }
 }
