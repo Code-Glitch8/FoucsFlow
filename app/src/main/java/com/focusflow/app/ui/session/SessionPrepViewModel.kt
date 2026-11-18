@@ -43,6 +43,7 @@ data class PrepForm(
     val mode: SessionMode = SessionMode.TIMED,
     val durationMinutes: Int = 25,
     val strict: Boolean = true,
+    val launchSnapGpt: Boolean = false,
     val loadedPresetId: Long? = null,
 )
 
@@ -141,6 +142,7 @@ class SessionPrepViewModel(
     fun setMode(m: SessionMode) = form.update { it.copy(mode = m) }
     fun setDuration(min: Int) = form.update { it.copy(durationMinutes = min.coerceIn(1, 600)) }
     fun setStrict(v: Boolean) = form.update { it.copy(strict = v) }
+    fun setLaunchSnapGpt(v: Boolean) = form.update { it.copy(launchSnapGpt = v) }
 
     fun addChapter(name: String) {
         val subjectId = form.value.subjectId ?: return
@@ -297,6 +299,7 @@ class SessionPrepViewModel(
                     mode = p.mode,
                     durationMinutes = p.durationMinutes,
                     strict = p.strict,
+                    launchSnapGpt = p.launchSnapGpt,
                     loadedPresetId = p.id,
                 )
             }
@@ -314,6 +317,7 @@ class SessionPrepViewModel(
                 mode = f.mode,
                 durationMinutes = f.durationMinutes,
                 strict = f.strict,
+                launchSnapGpt = f.launchSnapGpt,
             )
             when (val r = presetRepo.save(draft)) {
                 is PresetRepository.SaveResult.Saved -> {
