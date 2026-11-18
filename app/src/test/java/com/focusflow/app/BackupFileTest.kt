@@ -10,7 +10,7 @@ import org.junit.Test
 
 class BackupFileTest {
     private fun sqlite(version: Int): File {
-        val f = File.createTempFile("bk", ".db")
+        val f = File.createTempFile("backup", ".db")
         val b = ByteArray(4096)
         "SQLite format 3\u0000".toByteArray(Charsets.US_ASCII).copyInto(b)
         b[60] = (version shr 24).toByte(); b[61] = (version shr 16).toByte(); b[62] = (version shr 8).toByte(); b[63] = version.toByte()
