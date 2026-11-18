@@ -5,14 +5,15 @@ import android.content.Intent
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Button
-import androidx.glance.action.ActionCallback
+import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
-import androidx.glance.action.actionRunCallback
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.action.actionStartActivity
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.updateAll
 import androidx.glance.layout.Column
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
@@ -20,7 +21,7 @@ import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.text.Text
-import androidx.glance.unit.dp
+import androidx.compose.ui.unit.dp
 import com.focusflow.app.FocusFlowApp
 import com.focusflow.app.MainActivity
 import com.focusflow.app.data.db.SessionMode
