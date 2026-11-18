@@ -164,19 +164,3 @@ fun FocusFlowRoot() {
         }
     }
 }
-
-@Composable
-private fun ShellScreen(destination: Destination) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(PaddingValues(24.dp)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = "${destination.label}\n\nNot built yet — this screen is implemented in a later phase.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
