@@ -88,6 +88,7 @@ class SessionPrepViewModel(
     private val form = MutableStateFlow(PrepForm())
     private val aiState = MutableStateFlow(AiUiState(voice = voice.availability()))
     private val starting = MutableStateFlow(false)
+    val floatingEnabled = settings.floatingEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val messages: SharedFlow<String> = _messages

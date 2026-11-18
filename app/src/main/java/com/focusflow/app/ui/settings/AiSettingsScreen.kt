@@ -116,7 +116,7 @@ fun AiSettingsScreen(onBack: () -> Unit) {
     var name by remember { mutableStateOf("") }
     var provider by remember { mutableStateOf(ApiProvider.GEMINI) }
     var baseUrl by remember { mutableStateOf("") }
-    var model by remember { mutableStateOf("gemini-2.5-flash") }
+    var model by remember { mutableStateOf("") }
     var apiKey by remember { mutableStateOf("") }
     var showKey by remember { mutableStateOf(false) }
 
@@ -125,7 +125,7 @@ fun AiSettingsScreen(onBack: () -> Unit) {
         name = ""
         provider = ApiProvider.GEMINI
         baseUrl = ""
-        model = "gemini-2.5-flash"
+        model = ""
         apiKey = ""
         showKey = false
     }
@@ -164,10 +164,7 @@ fun AiSettingsScreen(onBack: () -> Unit) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
                         selected = provider == ApiProvider.GEMINI,
-                        onClick = {
-                            provider = ApiProvider.GEMINI
-                            if (model.isBlank() || model == "gpt-4o-mini") model = "gemini-2.5-flash"
-                        },
+                        onClick = { provider = ApiProvider.GEMINI },
                         label = { Text("Gemini") },
                     )
                     FilterChip(
@@ -175,7 +172,6 @@ fun AiSettingsScreen(onBack: () -> Unit) {
                         onClick = {
                             provider = ApiProvider.OPENAI_COMPATIBLE
                             if (baseUrl.isBlank()) baseUrl = "https://api.openai.com/v1"
-                            if (model.isBlank() || model.startsWith("gemini")) model = "gpt-4o-mini"
                         },
                         label = { Text("OpenAI-compatible") },
                     )
@@ -200,7 +196,7 @@ fun AiSettingsScreen(onBack: () -> Unit) {
                 )
                 OutlinedTextField(
                     value = model, onValueChange = { model = it.trim().take(120) },
-                    label = { Text("Model ID") }, singleLine = true,
+                    label = { Text("Model ID") }, placeholder = { Text("Enter the model ID from your provider") }, singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(

@@ -84,6 +84,7 @@ fun SessionPrepScreen(presetId: Long? = null, onBack: () -> Unit, onManageSubjec
     }
     val ui by vm.state.collectAsStateWithLifecycle()
     val form = ui.form
+    val floatingEnabled by vm.floatingEnabled.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     var dialog by remember { mutableStateOf<PrepDialog?>(null) }
@@ -124,7 +125,7 @@ fun SessionPrepScreen(presetId: Long? = null, onBack: () -> Unit, onManageSubjec
         }
     }
     fun startWithPermission() {
-        if (Permissions.overlayGranted(context)) {
+        if (!floatingEnabled || Permissions.overlayGranted(context)) {
             startWithNotificationPermission()
         } else {
             overlayLauncher.launch(
