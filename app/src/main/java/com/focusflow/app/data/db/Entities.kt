@@ -15,11 +15,11 @@ enum class SessionStatus { ACTIVE, COMPLETED, ENDED_EARLY, EMERGENCY_EXIT }
 enum class TaskStatus { OPEN, DONE, DISMISSED }
 
 /** Where a task came from, so AI output and fallback output are never confused. */
-enum class TaskOrigin { MANUAL, ON_DEVICE_AI, RULE_BASED }
+enum class TaskOrigin { MANUAL, API_AI, ON_DEVICE_AI, RULE_BASED }
 
 enum class AppCategory { GAME, SOCIAL, ENTERTAINMENT, CUSTOM }
 
-enum class SummarySource { ON_DEVICE_AI, TEMPLATE }
+enum class SummarySource { API_AI, ON_DEVICE_AI, TEMPLATE }
 
 @Entity(tableName = "subjects", indices = [Index(value = ["name"], unique = true)])
 data class SubjectEntity(

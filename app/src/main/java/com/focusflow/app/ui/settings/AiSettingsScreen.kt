@@ -1,124 +1,143 @@
 package com.focusflow.app.ui.settings
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.focusflow.app.ai.AiService
-import com.focusflow.app.ai.DownloadState
-import com.focusflow.app.ai.ImportResult
-import com.focusflow.app.ai.LocalLlm
-import com.focusflow.app.ai.ModelCatalog
-import com.focusflow.app.ai.ModelManager
-import com.focusflow.app.ai.ModelSpec
-import com.focusflow.app.data.db.TaskOrigin
+import com.focusflow.app.data.settings.ApiConfigStore
+import com.focusflow.app.data.settings.ApiProfile
+import com.focusflow.app.data.settings.ApiProvider
 import com.focusflow.app.data.settings.AppSettings
 import com.focusflow.app.ui.common.AppCard
 import com.focusflow.app.ui.common.ScreenTitle
 import com.focusflow.app.ui.common.SectionLabel
 import com.focusflow.app.ui.common.containerViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class AiSettingsViewModel(
+    val configs: ApiConfigStore,
     private val settings: AppSettings,
-    val models: ModelManager,
-    private val llm: LocalLlm,
     private val ai: AiService,
 ) : ViewModel() {
-    val enabled = settings.aiEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
-    val selected = settings.aiModelFile.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val voiceOffline = settings.voiceOfflineOnly.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
     val status = MutableStateFlow<String?>(null)
     val testing = MutableStateFlow(false)
 
-    fun setEnabled(v: Boolean) { viewModelScope.launch { settings.setAiEnabled(v) } }
     fun setVoiceOffline(v: Boolean) { viewModelScope.launch { settings.setVoiceOfflineOnly(v) } }
-    fun select(f: String) { viewModelScope.launch { models.select(f) } }
-    fun delete(f: String) { viewModelScope.launch { llm.release(); models.delete(f) } }
-    fun import(uri: android.net.Uri) {
-        viewModelScope.launch {
-            status.value = when (val r = models.import(uri)) {
-                is ImportResult.Imported -> "Imported ${r.fileName}."
-                is ImportResult.Rejected -> r.reason
-            }
+
+    fun save(profile: ApiProfile) {
+        if (profile.name.isBlank() || profile.model.isBlank() || profile.apiKey.isBlank()) {
+            status.value = "Enter a profile name, model and API key."
+            return
         }
+        if (profile.provider == ApiProvider.OPENAI_COMPATIBLE &&
+            (!profile.baseUrl.startsWith("https://") || profile.baseUrl.isBlank())
+        ) {
+            status.value = "Enter a valid HTTPS base URL for this provider."
+            return
+        }
+        configs.save(profile, activate = true)
+        status.value = "API configuration saved securely and activated."
+    }
+
+    fun activate(id: String) {
+        configs.setActive(id)
+        status.value = "Active API changed."
+    }
+
+    fun delete(id: String) {
+        configs.delete(id)
+        status.value = "API configuration removed."
     }
 
     fun test() {
         if (testing.value) return
         testing.value = true
-        status.value = "Running the model… this can take a minute on the first run."
+        status.value = "Testing the active API…"
         viewModelScope.launch {
-            val r = ai.selfTest()
-            status.update {
-                if (r.source == TaskOrigin.ON_DEVICE_AI) "The model works: it produced ${r.tasks.size} tasks from a sample plan."
-                else "The model did not run. ${r.note ?: ""}".trim()
+            try {
+                val result = ai.selfTest()
+                status.value = if (result.tasks.isNotEmpty()) {
+                    "Connection works. The API returned ${result.tasks.size} grounded task suggestions."
+                } else {
+                    result.note ?: "The API did not return usable task suggestions."
+                }
+            } finally {
+                testing.value = false
             }
-            testing.value = false
         }
     }
 }
 
-private fun mb(b: Long) = if (b >= 1024L * 1024 * 1024) "%.1f GB".format(b / 1073741824.0) else "${b / (1024 * 1024)} MB"
-
 @Composable
 fun AiSettingsScreen(onBack: () -> Unit) {
-    val vm = containerViewModel { AiSettingsViewModel(it.settings, it.models, it.llm, it.ai) }
-    val enabled by vm.enabled.collectAsStateWithLifecycle()
-    val selected by vm.selected.collectAsStateWithLifecycle()
+    val vm = containerViewModel { AiSettingsViewModel(it.apiConfigs, it.settings, it.ai) }
+    val profiles by vm.configs.profiles.collectAsStateWithLifecycle()
+    val activeId by vm.configs.activeId.collectAsStateWithLifecycle()
     val voiceOffline by vm.voiceOffline.collectAsStateWithLifecycle()
-    val installed by vm.models.installed.collectAsStateWithLifecycle()
-    val download by vm.models.download.collectAsStateWithLifecycle()
     val status by vm.status.collectAsStateWithLifecycle()
     val testing by vm.testing.collectAsStateWithLifecycle()
-    var confirm by remember { mutableStateOf<ModelSpec?>(null) }
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) vm.import(uri) }
 
-    confirm?.let { spec ->
-        AlertDialog(
-            onDismissRequest = { confirm = null },
-            title = { Text("Download ${spec.name}?") },
-            text = {
-                Text(
-                    "This downloads about ${mb(spec.approxBytes)} from Hugging Face over your current connection. " +
-                        "It is the only time FocusFlow uses the internet. After that, the AI runs entirely on your phone.",
-                )
-            },
-            confirmButton = { TextButton(onClick = { vm.models.startDownload(spec); confirm = null }) { Text("Download") } },
-            dismissButton = { TextButton(onClick = { confirm = null }) { Text("Cancel") } },
-        )
+    var profileId by remember { mutableStateOf(ApiConfigStore.newId()) }
+    var name by remember { mutableStateOf("") }
+    var provider by remember { mutableStateOf(ApiProvider.GEMINI) }
+    var baseUrl by remember { mutableStateOf("") }
+    var model by remember { mutableStateOf("") }
+    var apiKey by remember { mutableStateOf("") }
+    var showKey by remember { mutableStateOf(false) }
+
+    fun clearForm() {
+        profileId = ApiConfigStore.newId()
+        name = ""
+        provider = ApiProvider.GEMINI
+        baseUrl = ""
+        model = ""
+        apiKey = ""
+        showKey = false
+    }
+
+    fun loadProfile(p: ApiProfile) {
+        profileId = p.id
+        name = p.name
+        provider = p.provider
+        baseUrl = p.baseUrl
+        model = p.model
+        apiKey = p.apiKey
+        showKey = false
     }
 
     LazyColumn(
@@ -129,80 +148,119 @@ fun AiSettingsScreen(onBack: () -> Unit) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
-                ScreenTitle("Offline AI & voice")
+                ScreenTitle("AI API & voice")
             }
         }
         item {
             AppCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Use on-device AI", style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            "Turns your description into tasks and writes summaries. No account, no API key, nothing leaves your phone. " +
-                                "Without a model, simple built-in rules are used and labelled as such.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(checked = enabled, onCheckedChange = vm::setEnabled)
-                }
-            }
-        }
-        item { SectionLabel("MODELS") }
-        items(ModelCatalog.all.size) { i ->
-            val spec = ModelCatalog.all[i]
-            val have = installed.firstOrNull { it.fileName == spec.fileName }
-            val dl = download as? DownloadState.Downloading
-            val active = dl?.modelId == spec.id
-            val failed = (download as? DownloadState.Failed)?.takeIf { it.modelId == spec.id }
-            AppCard {
-                Text(spec.name, style = MaterialTheme.typography.titleMedium)
-                Text(spec.description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                when {
-                    have != null -> Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = selected == have.fileName || (selected == null && installed.first().fileName == have.fileName), onClick = { vm.select(have.fileName) })
-                        Text("Use this (${mb(have.sizeBytes)})", modifier = Modifier.weight(1f))
-                        TextButton(onClick = { vm.delete(have.fileName) }) { Text("Delete") }
-                    }
-                    active -> {
-                        LinearProgressIndicator(progress = { if (dl!!.total > 0) (dl.bytes.toFloat() / dl.total).coerceIn(0f, 1f) else 0f })
-                        Text("${mb(dl!!.bytes)} of ${mb(dl.total)}")
-                        OutlinedButton(onClick = vm.models::cancelDownload) { Text("Pause") }
-                    }
-                    else -> {
-                        failed?.let { Text(it.message, color = MaterialTheme.colorScheme.error) }
-                        Button(onClick = { vm.models.dismissFailure(); confirm = spec }, enabled = download !is DownloadState.Downloading) { Text("Download") }
-                    }
-                }
-            }
-        }
-        item {
-            AppCard {
-                Text("Already have a model file?", style = MaterialTheme.typography.titleMedium)
+                SectionLabel("API CONFIGURATION")
                 Text(
-                    "If a model needs you to accept a license in your browser, download its .litertlm file there and import it here.",
+                    "AI task generation and session summaries use the API profile you select here. There is no built-in model or rule-based task generator. " +
+                        "Your API keys are encrypted on this phone with Android Keystore and are not included in backups or Wi-Fi sync.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                OutlinedButton(onClick = { picker.launch(arrayOf("*/*")) }) { Text("Import model file") }
-                OutlinedButton(onClick = vm::test, enabled = !testing && installed.isNotEmpty()) { Text("Test model") }
-                status?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+                SectionLabel("PROVIDER")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = provider == ApiProvider.GEMINI,
+                        onClick = { provider = ApiProvider.GEMINI },
+                        label = { Text("Gemini") },
+                    )
+                    FilterChip(
+                        selected = provider == ApiProvider.OPENAI_COMPATIBLE,
+                        onClick = {
+                            provider = ApiProvider.OPENAI_COMPATIBLE
+                            if (baseUrl.isBlank()) baseUrl = "https://api.openai.com/v1"
+                        },
+                        label = { Text("OpenAI-compatible") },
+                    )
+                }
+                OutlinedTextField(
+                    value = name, onValueChange = { name = it.take(80) },
+                    label = { Text("Configuration name") }, singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = baseUrl, onValueChange = { baseUrl = it.trim() },
+                    label = { Text(if (provider == ApiProvider.GEMINI) "Base URL (optional)" else "API base URL") },
+                    placeholder = { Text(if (provider == ApiProvider.GEMINI) "Default Gemini endpoint" else "https://api.openai.com/v1") },
+                    supportingText = {
+                        Text(
+                            if (provider == ApiProvider.GEMINI) "Leave blank to use Google's Gemini API endpoint."
+                            else "Use the provider's HTTPS OpenAI-compatible API base URL.",
+                        )
+                    },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = model, onValueChange = { model = it.trim().take(120) },
+                    label = { Text("Model ID") }, placeholder = { Text("Enter the model ID from your provider") }, singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = apiKey, onValueChange = { apiKey = it.take(4096) },
+                    label = { Text("API key") }, singleLine = true,
+                    visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        TextButton(onClick = { showKey = !showKey }) { Text(if (showKey) "Hide" else "Show") }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            vm.save(ApiProfile(profileId, name.trim(), provider, baseUrl.trim(), model.trim(), apiKey.trim()))
+                        },
+                    ) { Text("Save & activate") }
+                    OutlinedButton(onClick = ::clearForm) { Text("Clear") }
+                }
+                status?.let {
+                    Text(it, color = if (it.contains("failed", true) || it.contains("enter", true)) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
         item {
             AppCard {
-                SectionLabel("VOICE")
+                SectionLabel("SAVED CONFIGURATIONS")
+                if (profiles.isEmpty()) {
+                    Text("No API profiles saved yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    profiles.forEach { p ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(selected = activeId == p.id, onClick = { vm.activate(p.id) })
+                            Column(Modifier.weight(1f)) {
+                                Text(p.name, style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    "${p.provider.name.replace('_', ' ')} · ${p.model}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            TextButton(onClick = { loadProfile(p) }) { Text("Edit") }
+                            TextButton(onClick = { vm.delete(p.id) }) { Text("Delete") }
+                        }
+                    }
+                }
+                OutlinedButton(onClick = vm::test, enabled = activeId != null && !testing) {
+                    Text(if (testing) "Testing…" else "Test active API")
+                }
+            }
+        }
+        item {
+            AppCard {
+                SectionLabel("VOICE INPUT")
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("Only use offline speech recognition", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "On: voice works only if your phone has an on-device recognizer, so audio never leaves the phone. " +
-                                "Off: Android's default recognizer may be used, which on many phones sends audio to Google. Typing always works.",
+                            "On: voice works only if this phone has an on-device recognizer. Off: Android's default recognizer may send audio to its speech provider. Typing always works.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    Switch(checked = voiceOffline, onCheckedChange = vm::setVoiceOffline)
+                    androidx.compose.material3.Switch(checked = voiceOffline, onCheckedChange = vm::setVoiceOffline)
                 }
             }
         }

@@ -69,7 +69,7 @@ data class Proposal(val title: String, val minutes: Int?, val subtasks: List<Str
 data class AiUiState(
     val generating: Boolean = false,
     val proposals: List<Proposal> = emptyList(),
-    val origin: TaskOrigin = TaskOrigin.RULE_BASED,
+    val origin: TaskOrigin = TaskOrigin.API_AI,
     val note: String? = null,
     val listening: Boolean = false,
     val partial: String = "",
@@ -88,6 +88,7 @@ class SessionPrepViewModel(
     private val form = MutableStateFlow(PrepForm())
     private val aiState = MutableStateFlow(AiUiState(voice = voice.availability()))
     private val starting = MutableStateFlow(false)
+    val floatingEnabled = settings.floatingEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val messages: SharedFlow<String> = _messages
