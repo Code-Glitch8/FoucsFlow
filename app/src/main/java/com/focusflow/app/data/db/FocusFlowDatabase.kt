@@ -5,6 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [
@@ -22,7 +23,7 @@ import androidx.room.migration.Migration
         BreakConfigurationEntity::class,
         SessionSummaryEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class FocusFlowDatabase : RoomDatabase() {
@@ -39,7 +40,13 @@ abstract class FocusFlowDatabase : RoomDatabase() {
          * NOT enabled: losing a user's study history on an app update is worse than a crash
          * that a developer will notice.
          */
-        val MIGRATIONS: Array<Migration> = emptyArray()
+        val MIGRATIONS: Array<Migration> = arrayOf(
+            object : Migration(1, 2) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE study_presets ADD COLUMN launchSnapGpt INTEGER NOT NULL DEFAULT 0")
+                }
+            },
+        )
 
         private const val DB_NAME = "focusflow.db"
         const val PENDING_IMPORT = "pending_import.db"
@@ -64,7 +71,7 @@ abstract class FocusFlowDatabase : RoomDatabase() {
             }
         }
 
-        const val CURRENT_VERSION = 1
+        const val CURRENT_VERSION = 2
 
         fun build(context: Context): FocusFlowDatabase {
             applyPendingImport(context)
