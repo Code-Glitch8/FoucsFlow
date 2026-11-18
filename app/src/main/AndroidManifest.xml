@@ -19,6 +19,7 @@
 
     <!-- Lets the app list launchable apps for the blocklist without the broad QUERY_ALL_PACKAGES permission. -->
     <queries>
+        <package android:name="com.snapgpt.assistant" />
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
@@ -89,6 +90,42 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Keeps an active study session, its timer and break countdown running while the user studies in other apps" />
         </service>
+
+        <receiver
+            android:name=".widget.FocusQuickStartReceiver"
+            android:exported="true"
+            android:label="Focus Quick Start">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/focus_quick_start_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.FocusProfilesReceiver"
+            android:exported="true"
+            android:label="Focus Profiles">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/focus_profiles_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.FocusAnalyticsReceiver"
+            android:exported="true"
+            android:label="Focus Analytics">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/focus_analytics_widget_info" />
+        </receiver>
     </application>
 
 </manifest>

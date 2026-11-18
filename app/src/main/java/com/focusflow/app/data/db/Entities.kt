@@ -211,6 +211,8 @@ data class StudyPresetEntity(
     val strict: Boolean = true,
     val blockYoutubeShorts: Boolean = true,
     val floatingAssistant: Boolean = true,
+    /** Launch the user's installed SnapGPT assistant after this profile starts. */
+    val launchSnapGpt: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
 )
 

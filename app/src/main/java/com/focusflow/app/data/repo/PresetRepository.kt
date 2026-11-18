@@ -34,6 +34,7 @@ data class PresetDraft(
     val strict: Boolean = true,
     val blockYoutubeShorts: Boolean = true,
     val floatingAssistant: Boolean = true,
+    val launchSnapGpt: Boolean = false,
     val blockedApps: List<BlockedAppRule> = emptyList(),
     val allowedApps: List<AllowedAppRule> = emptyList(),
     val breakConfig: BreakConfig = BreakConfig(),
@@ -58,6 +59,7 @@ class PresetRepository(private val db: FocusFlowDatabase) {
             strict = p.strict,
             blockYoutubeShorts = p.blockYoutubeShorts,
             floatingAssistant = p.floatingAssistant,
+            launchSnapGpt = p.launchSnapGpt,
             blockedApps = rules.getBlockedForPreset(presetId).map {
                 BlockedAppRule(it.packageName, it.label, it.category, it.blockedDuringBreak)
             },
@@ -81,6 +83,7 @@ class PresetRepository(private val db: FocusFlowDatabase) {
                     strict = draft.strict,
                     blockYoutubeShorts = draft.blockYoutubeShorts,
                     floatingAssistant = draft.floatingAssistant,
+                    launchSnapGpt = draft.launchSnapGpt,
                 )
                 val presetId = if (draft.id == 0L) {
                     presets.insert(entity)

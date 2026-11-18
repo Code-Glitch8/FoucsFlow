@@ -26,6 +26,8 @@ To build locally: `./gradlew testDebugUnitTest assembleDebug` (JDK 17, Android S
 | Unfinished work | Open tasks stay on your list with their subject/chapter and can be added to a new session without duplicates. |
 | Statistics | Daily/weekly focus charts, time per subject and chapter, sessions, done/unfinished tasks, last studied, streak. Time is never presented as mastery; optional self-rated confidence (1–5) is kept separate. |
 | Data | Export/import backup, delete history, reset everything, preset management. |
+| Home-screen widgets | Quick Start, saved Focus Profiles (up to four), and 7-day study analytics. Profile widgets start the saved timer and its existing app/site blocking rules in one tap. |
+| SnapGPT | A profile can optionally launch the installed SnapGPT Android app (`com.snapgpt.assistant`) when started from a widget. |
 
 ## Offline AI and voice
 
@@ -44,6 +46,7 @@ To build locally: `./gradlew testDebugUnitTest assembleDebug` (JDK 17, Android S
 * Backups copy the whole database and are applied the next time the app starts. They don't include theme/other settings or AI models. Backups from a newer app version are rejected.
 * Offline speech needs the language pack for your language to be installed.
 * Statistics attribute a session to the day it started; a session covering several chapters shares its time equally between them.
+* Widgets are added from the Android launcher’s Widgets picker. The Focus Profiles widget displays up to four saved profiles; configure each profile in Start studying before adding it.
 
 ## Architecture
 

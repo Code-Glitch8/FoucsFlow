@@ -22,6 +22,17 @@ class SubjectRepository(
     /** Idempotent: inserts the built-in subjects that are missing (unique name makes it safe). */
     suspend fun ensureBuiltIns() {
         BUILT_IN_SUBJECTS.forEach { subjectDao.insert(SubjectEntity(name = it, builtIn = true)) }
+
+        // Seed the current NCERT/CBSE Class 11 chapter set once. Existing user chapters are
+        // retained, and case-insensitive unique indexes make this safe on every app launch.
+        val subjectsByName = subjectDao.getAll().associateBy { it.name.lowercase() }
+        val existing = chapterDao.getAll().map { it.subjectId to it.name.lowercase() }.toSet()
+        CLASS_11_CHAPTERS.forEach { (subjectName, names) ->
+            val subjectId = subjectsByName[subjectName.lowercase()]?.id ?: return@forEach
+            names.filter { (subjectId to it.lowercase()) !in existing }.forEach { name ->
+                chapterDao.insert(ChapterEntity(subjectId = subjectId, name = name))
+            }
+        }
     }
 
     suspend fun addSubject(rawName: String): EditResult {
@@ -78,5 +89,29 @@ class SubjectRepository(
 
     companion object {
         val BUILT_IN_SUBJECTS = listOf("Mathematics", "Physics", "Chemistry", "Biology", "Other")
+
+        val CLASS_11_CHAPTERS = linkedMapOf(
+            "Mathematics" to listOf(
+                "Sets", "Relations and Functions", "Trigonometric Functions",
+                "Complex Numbers and Quadratic Equations", "Linear Inequalities",
+                "Permutations and Combinations", "Binomial Theorem", "Sequences and Series",
+                "Straight Lines", "Conic Sections", "Introduction to Three Dimensional Geometry",
+                "Limits and Derivatives", "Statistics", "Probability",
+            ),
+            "Physics" to listOf(
+                "Units and Measurements", "Motion in a Straight Line", "Motion in a Plane",
+                "Laws of Motion", "Work, Energy and Power", "System of Particles and Rotational Motion",
+                "Gravitation", "Mechanical Properties of Solids", "Mechanical Properties of Fluids",
+                "Thermal Properties of Matter", "Thermodynamics", "Kinetic Theory",
+                "Oscillations", "Waves",
+            ),
+            "Chemistry" to listOf(
+                "Some Basic Concepts of Chemistry", "Structure of Atom",
+                "Classification of Elements and Periodicity in Properties",
+                "Chemical Bonding and Molecular Structure", "Chemical Thermodynamics",
+                "Equilibrium", "Redox Reactions", "Organic Chemistry: Some Basic Principles and Techniques",
+                "Hydrocarbons",
+            ),
+        )
     }
 }
