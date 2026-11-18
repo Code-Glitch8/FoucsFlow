@@ -65,6 +65,9 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE status = 'DONE' ORDER BY completedAt DESC LIMIT :limit")
     fun observeRecentlyDone(limit: Int): Flow<List<TaskEntity>>
 
+    @Query("SELECT * FROM tasks")
+    fun observeAll(): Flow<List<TaskEntity>>
+
     @Query("SELECT * FROM tasks WHERE id = :id")
     suspend fun getById(id: Long): TaskEntity?
 

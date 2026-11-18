@@ -73,7 +73,7 @@ private sealed interface PrepDialog {
 }
 
 @Composable
-fun SessionPrepScreen(onBack: () -> Unit, onManageSubjects: () -> Unit) {
+fun SessionPrepScreen(presetId: Long? = null, onBack: () -> Unit, onManageSubjects: () -> Unit) {
     val vm = containerViewModel {
         SessionPrepViewModel(it.sessions, it.subjects, it.tasks, it.presets, it.settings, it.ai, com.focusflow.app.speech.VoiceRecognizer(it.appContext))
     }
@@ -84,6 +84,7 @@ fun SessionPrepScreen(onBack: () -> Unit, onManageSubjects: () -> Unit) {
     var dialog by remember { mutableStateOf<PrepDialog?>(null) }
     var customDuration by remember { mutableStateOf(false) }
 
+    LaunchedEffect(presetId) { if (presetId != null) vm.loadPreset(presetId) }
     LaunchedEffect(vm) { vm.messages.collect { snackbar.showSnackbar(it) } }
     LaunchedEffect(vm) {
         vm.started.collect {

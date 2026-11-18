@@ -6,6 +6,7 @@ import com.focusflow.app.ai.LocalLlm
 import com.focusflow.app.ai.ModelManager
 import com.focusflow.app.data.db.FocusFlowDatabase
 import com.focusflow.app.data.repo.BlockRulesRepository
+import com.focusflow.app.data.repo.HistoryRepository
 import com.focusflow.app.data.repo.BreakConfigRepository
 import com.focusflow.app.data.repo.PresetRepository
 import com.focusflow.app.data.repo.SessionRepository
@@ -30,6 +31,7 @@ class AppContainer(context: Context) {
     val breakConfig = BreakConfigRepository(database)
     val sessions = SessionRepository(database, tasks)
     val blockRules = BlockRulesRepository(database)
+    val history = HistoryRepository(database)
     val blockState = BlockStateHolder(sessions, blockRules, settings, appScope)
 
     val models = ModelManager(appContext, appScope, settings)
