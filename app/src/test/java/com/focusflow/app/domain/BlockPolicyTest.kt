@@ -65,6 +65,13 @@ class BlockPolicyTest {
     }
 
     @Test
+    fun `full YouTube switch takes precedence over generic allow list`() {
+        val pkg = BlockPolicy.YOUTUBE_PACKAGE
+        val input = base.copy(blockYoutubeApp = true, allowed = setOf(pkg))
+        assertTrue(BlockPolicy.shouldBlockApp(pkg, input))
+    }
+
+    @Test
     fun `explicit YouTube block can remain active during a break`() {
         val pkg = BlockPolicy.YOUTUBE_PACKAGE
         val input = base.copy(
