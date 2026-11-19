@@ -15,6 +15,7 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.focusflow.app.FocusFlowApp
 import com.focusflow.app.MainActivity
+import com.focusflow.app.widgets.WeeklyAnalyticsWidgetProvider
 import com.focusflow.app.R
 import com.focusflow.app.data.db.SessionMode
 import com.focusflow.app.data.db.SessionStatus
@@ -66,6 +67,7 @@ class FocusSessionService : Service() {
         val repo = (application as FocusFlowApp).container.sessions
         repo.observeActive().collectLatest { active ->
             if (active == null) {
+                WeeklyAnalyticsWidgetProvider.refreshAll(this@FocusSessionService)
                 overlay?.hide()
                 ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
                 stopSelf()
