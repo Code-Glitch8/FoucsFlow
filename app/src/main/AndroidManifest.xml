@@ -98,6 +98,21 @@
             android:name=".widgets.PresetWidgetActionReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".widgets.SnapGptWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_snapgpt_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widgets.SnapGptWidgetActionReceiver"
+            android:exported="false" />
+
         <service
             android:name=".service.FocusAccessibilityService"
             android:exported="true"
