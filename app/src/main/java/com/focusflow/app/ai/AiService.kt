@@ -31,7 +31,7 @@ class AiService(
             "the student mentioned. Never invent chapters, activities or achievements. Split larger activities " +
             "into smaller concrete tasks only when implied. Each title must be an imperative phrase of at most " +
             "12 words. minutes is an optional integer estimate; subtasks are optional. Never mark anything done. " +
-            "Reply only with JSON: {\\"tasks\\":[{\\"title\\":\\"...\\",\\"minutes\\":15,\\"subtasks\\":[\\"...\\"]}]}"
+            "Reply only with JSON: {\"tasks\":[{\"title\":\"...\",\"minutes\":15,\"subtasks\":[\"...\"]}]}"
 
     private val summarySystem =
         "Write a brief, friendly study-session summary of 3 to 5 sentences using only the supplied facts. " +
@@ -54,9 +54,9 @@ class AiService(
                 "Add and select an API provider in Settings → AI providers. You can still add tasks manually.",
             )
         val prompt = buildString {
-            if (!subject.isNullOrBlank()) append("Subject: $subject\\n")
-            if (chapters.isNotEmpty()) append("Chapters: ${chapters.joinToString(", ")}\\n")
-            append("Student's plan:\\n${description.trim()}")
+            if (!subject.isNullOrBlank()) append("Subject: $subject\n")
+            if (chapters.isNotEmpty()) append("Chapters: ${chapters.joinToString(", ")}\n")
+            append("Student's plan:\n${description.trim()}")
         }
         val result = withContext(Dispatchers.IO) {
             client.complete(provider.config, provider.apiKey, extractSystem, prompt)
@@ -83,13 +83,13 @@ class AiService(
         val provider = providers.ready()
             ?: return SummaryResult("", SummarySource.EXTERNAL_AI, "Add and select an API provider to generate a session summary.")
         val factText = buildString {
-            append("Subject: ${facts.subject}\\n")
-            append("Chapters: ${facts.chapters.joinToString(", ").ifBlank { "None selected" }}\\n")
-            append("Plan: ${facts.planned.ifBlank { "No plan text supplied" }}\\n")
-            append("Session status: ${facts.status}\\n")
-            append("Focused minutes: ${facts.focusMinutes}\\n")
-            append("Break minutes: ${facts.breakMinutes}\\n")
-            append("Completed tasks: ${facts.completedTasks.joinToString("; ").ifBlank { "None" }}\\n")
+            append("Subject: ${facts.subject}\n")
+            append("Chapters: ${facts.chapters.joinToString(", ").ifBlank { "None selected" }}\n")
+            append("Plan: ${facts.planned.ifBlank { "No plan text supplied" }}\n")
+            append("Session status: ${facts.status}\n")
+            append("Focused minutes: ${facts.focusMinutes}\n")
+            append("Break minutes: ${facts.breakMinutes}\n")
+            append("Completed tasks: ${facts.completedTasks.joinToString("; ").ifBlank { "None" }}\n")
             append("Unfinished tasks: ${facts.unfinishedTasks.joinToString("; ").ifBlank { "None" }}")
         }
         val result = withContext(Dispatchers.IO) {
