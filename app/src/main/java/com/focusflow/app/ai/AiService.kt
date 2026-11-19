@@ -112,8 +112,8 @@ class AiService(
 
     private fun isFaithful(text: String, facts: String): Boolean {
         if (text.length !in 20..1800) return false
-        val allowedNumbers = Regex("\\\\d+").findAll(facts).map { it.value }.toSet()
-        return Regex("\\\\d+").findAll(text).all { it.value in allowedNumbers }
+        val allowedNumbers = Regex("\\d+").findAll(facts).map { it.value }.toSet()
+        return Regex("\\d+").findAll(text).all { it.value in allowedNumbers }
     }
 
     suspend fun selfTest(): TaskExtraction = extractTasks(

@@ -41,7 +41,7 @@ class AppContainer(context: Context) {
     val launcher = SessionLauncher(appContext, sessions, presets, subjects, tasks, widgets, settings)
     val sync = LocalSyncRepository(appContext)
     val history = HistoryRepository(database, sync)
-    val wifiSync = WifiPeerSyncManager(sync, history)
+    val wifiSync = WifiPeerSyncManager(appContext, sync, history)
     val backup = BackupRepository(appContext, database, sessions, settings, subjects)
     val blockState = BlockStateHolder(sessions, blockRules, settings, appScope)
 

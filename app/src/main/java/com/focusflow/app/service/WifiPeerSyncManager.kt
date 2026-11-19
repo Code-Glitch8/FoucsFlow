@@ -1,5 +1,7 @@
 package com.focusflow.app.service
 
+import android.content.Context
+import android.net.wifi.WifiManager
 import com.focusflow.app.data.repo.HistoryRepository
 import com.focusflow.app.data.security.PairingCrypto
 import com.focusflow.app.data.sync.LocalSyncRepository
@@ -28,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 /** LAN-only peer discovery plus encrypted TCP exchange. No remote server or database is involved. */
 class WifiPeerSyncManager(
+    private val context: Context,
     private val sync: LocalSyncRepository,
     private val history: HistoryRepository,
 ) {
@@ -54,6 +57,11 @@ class WifiPeerSyncManager(
     private suspend fun runSyncLoop() {
         val server = ServerSocket()
         val discovery = DatagramSocket(null)
+        val wifi = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        val multicastLock = wifi.createMulticastLock("FocusFlowPeerSync").apply {
+            setReferenceCounted(false)
+            acquire()
+        }
         try {
             server.reuseAddress = true
             server.bind(InetSocketAddress("0.0.0.0", TCP_PORT))
@@ -115,6 +123,7 @@ class WifiPeerSyncManager(
         } finally {
             runCatching { discovery.close() }
             runCatching { server.close() }
+            runCatching { if (multicastLock.isHeld) multicastLock.release() }
         }
     }
 
