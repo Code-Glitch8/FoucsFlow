@@ -42,7 +42,13 @@ class FocusAccessibilityService : AccessibilityService() {
         if (pkg == packageName) return
         val now = System.currentTimeMillis()
 
-        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+        // Some launchers and OEM Android builds report the foreground transition as a
+        // windows/content change rather than a state change. Check all foreground-relevant
+        // events; handleForegroundApp has a per-package cooldown to prevent event storms.
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+            event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED ||
+            event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+        ) {
             handleForegroundApp(pkg, now)
         }
         if (pkg == YouTubeUiClassifier.PACKAGE &&
