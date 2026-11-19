@@ -156,16 +156,28 @@ fun HistoryScreen(onBack: () -> Unit, onOpenSession: (Long) -> Unit) {
             }
         } else {
             item { Text("${visible.size} session${if (visible.size == 1) "" else "s"}", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            items(visible, key = { it.id }) { s -> SessionRow(s, data, onClick = { onOpenSession(s.id) }) }
+            items(visible, key = { it.id }) { s ->
+                val synced = data.isSyncedSession(s.id)
+                SessionRow(
+                    s, data,
+                    onClick = { if (!synced) onOpenSession(s.id) },
+                    syncedFromOtherPhone = synced,
+                )
+            }
         }
     }
 }
 
 @Composable
-fun SessionRow(s: StudySessionEntity, data: StudyData, onClick: () -> Unit) {
+fun SessionRow(
+    s: StudySessionEntity,
+    data: StudyData,
+    syncedFromOtherPhone: Boolean = false,
+    onClick: () -> Unit,
+) {
     val links = data.sessionTasks.filter { it.sessionId == s.id }
     val chapterNames = data.chapters.filter { it.id in data.chapterIdsOf(s.id) }.joinToString(", ") { it.name }
-    AppCard(Modifier.clickable(onClick = onClick)) {
+    AppCard(Modifier.then(if (syncedFromOtherPhone) Modifier else Modifier.clickable(onClick = onClick))) {
         Text(s.subjectName + if (chapterNames.isNotEmpty()) " · $chapterNames" else "", style = MaterialTheme.typography.titleMedium)
         Text(formatWhen(s.startedAt), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -173,6 +185,10 @@ fun SessionRow(s: StudySessionEntity, data: StudyData, onClick: () -> Unit) {
             Text(if (s.mode == SessionMode.TIMED) "Timed" else "Open-ended")
             if (links.isNotEmpty()) Text("${links.count { it.completed }}/${links.size} tasks")
         }
-        Text(statusLabel(s.status), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            if (syncedFromOtherPhone) "Synced from other phone · ${statusLabel(s.status)}" else statusLabel(s.status),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
