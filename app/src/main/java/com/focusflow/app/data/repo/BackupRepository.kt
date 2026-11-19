@@ -68,6 +68,7 @@ class BackupRepository(
                 defaultDurationMin = settings.defaultDurationMin.first(),
                 shortsMode = settings.shortsMode.first().name,
                 homeRedirect = settings.homeRedirect.first(),
+                blockAllExceptAllowed = settings.blockAllExceptAllowed.first(),
                 floatingEnabled = settings.floatingEnabled.first(),
                 snapGptEnabled = settings.snapGptEnabled.first(),
                 snapGptPackage = settings.snapGptPackage.first(),
@@ -95,6 +96,7 @@ class BackupRepository(
                     s.defaultDurationMin?.let { settings.setDefaultDurationMin(it) }
                     s.shortsMode?.let { n -> com.focusflow.app.domain.ShortsMode.entries.firstOrNull { it.name == n }?.let { settings.setShortsMode(it) } }
                     s.homeRedirect?.let { settings.setHomeRedirect(it) }
+                    s.blockAllExceptAllowed?.let { settings.setBlockAllExceptAllowed(it) }
                     s.floatingEnabled?.let { settings.setFloatingEnabled(it) }
                     s.snapGptEnabled?.let { settings.setSnapGptEnabled(it) }
                     s.snapGptPackage?.let { settings.setSnapGptPackage(it) }

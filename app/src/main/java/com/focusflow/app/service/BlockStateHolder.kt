@@ -26,6 +26,7 @@ data class BlockSnapshot(
     val shortsMode: ShortsMode = ShortsMode.FOCUS_ONLY,
     val homeRedirect: Boolean = false,
     val blockYoutubeApp: Boolean = true,
+    val blockAllExceptAllowed: Boolean = false,
 ) {
     val sessionActive: Boolean get() = session != null
     fun onBreak(now: Long): Boolean = session?.let { SessionClock.isOnBreak(it.clock(), now) } == true
@@ -37,6 +38,7 @@ data class BlockSnapshot(
         allowed = allowed,
         essentials = essentials,
         blockYoutubeApp = blockYoutubeApp,
+        blockAllExceptAllowed = blockAllExceptAllowed,
     )
 
     fun shortsEnabled(now: Long) =
@@ -70,20 +72,27 @@ class BlockStateHolder(
         }
     }
 
+    private val appBlockingSettings = combine(
+        settings.blockYoutubeApp,
+        settings.blockAllExceptAllowed,
+    ) { blockYoutube, whitelistMode -> blockYoutube to whitelistMode }
+
     val snapshot: StateFlow<BlockSnapshot> = combine(
         sessions.observeActiveSession(),
         effectiveRules,
         settings.shortsMode,
         settings.homeRedirect,
-        settings.blockYoutubeApp,
-    ) { session, (blocked, allowed), shorts, redirect, blockYoutube ->
+        appBlockingSettings,
+    ) { session, rulesPair, shorts, redirect, appFlags ->
+        val (blocked, allowed) = rulesPair
         BlockSnapshot(
             session = session,
             blocked = blocked.associate { it.packageName to BlockRule(it.packageName, it.blockedDuringBreak) },
             allowed = allowed.map { it.packageName }.toSet(),
             shortsMode = shorts,
             homeRedirect = redirect,
-            blockYoutubeApp = blockYoutube,
+            blockYoutubeApp = appFlags.first,
+            blockAllExceptAllowed = appFlags.second,
         )
     }.stateIn(scope, SharingStarted.Eagerly, BlockSnapshot())
 }

@@ -1,40 +1,88 @@
 package com.focusflow.app.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.focusflow.app.FocusFlowApp
 import com.focusflow.app.data.db.SessionMode
 import com.focusflow.app.data.repo.BreakConfigRepository
 import com.focusflow.app.data.settings.AppSettings
+import com.focusflow.app.data.sync.LocalSyncRepository
 import com.focusflow.app.domain.BreakConfig
+import com.focusflow.app.service.WifiPeerSyncManager
 import com.focusflow.app.ui.common.AppCard
 import com.focusflow.app.ui.common.ScreenTitle
 import com.focusflow.app.ui.common.SectionLabel
 import com.focusflow.app.ui.common.containerViewModel
 import com.focusflow.app.ui.theme.ThemeMode
+import java.util.UUID
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class SettingsViewModel(
     private val settings: AppSettings,
@@ -53,6 +101,19 @@ class SettingsViewModel(
     fun setTheme(m: ThemeMode) { viewModelScope.launch { settings.setThemeMode(m) } }
     fun setDefaultMode(m: SessionMode) { viewModelScope.launch { settings.setDefaultMode(m) } }
     fun setDefaultDuration(min: Int) { viewModelScope.launch { settings.setDefaultDurationMin(min) } }
+}
+
+class WifiSyncSettingsViewModel(
+    private val sync: LocalSyncRepository,
+    private val wifiSync: WifiPeerSyncManager,
+    private val startSync: () -> Unit,
+) : ViewModel() {
+    val pairingCode = sync.pairingCode
+    val status = wifiSync.status
+    fun save(code: String): Boolean = sync.savePairingCode(code).also { if (it) startSync() }
+    fun clear() = sync.clearPairingCode()
+    fun syncNow() = wifiSync.syncNow()
+    fun generate(): String = UUID.randomUUID().toString().also { if (sync.savePairingCode(it)) startSync() }
 }
 
 private val DurationChoices = listOf(15, 25, 30, 45, 60, 90)
@@ -114,6 +175,8 @@ fun SettingsScreen(onOpenBlocking: () -> Unit, onOpenAi: () -> Unit, onOpenData:
         }
 
         item { SnapGptSettingsCard() }
+
+        item { WifiSyncSettingsCard() }
 
         item {
             AppCard {
@@ -177,9 +240,9 @@ fun SettingsScreen(onOpenBlocking: () -> Unit, onOpenAi: () -> Unit, onOpenData:
 
         item {
             AppCard {
-                SectionLabel("OFFLINE AI & VOICE")
+                SectionLabel("AI API & VOICE")
                 Text(
-                    "Download or import an on-device model, and choose how voice input behaves.",
+                    "Configure the API used for task suggestions and summaries, and choose how voice input behaves.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -200,6 +263,58 @@ fun SettingsScreen(onOpenBlocking: () -> Unit, onOpenAi: () -> Unit, onOpenData:
         }
     }
 }
+
+@Composable
+private fun WifiSyncSettingsCard() {
+    val app = LocalContext.current.applicationContext as FocusFlowApp
+    val vm = containerViewModel { WifiSyncSettingsViewModel(it.sync, it.wifiSync, app::startWifiSync) }
+    val savedCode by vm.pairingCode.collectAsStateWithLifecycle()
+    val status by vm.status.collectAsStateWithLifecycle()
+    var code by remember { mutableStateOf("") }
+
+    androidx.compose.runtime.LaunchedEffect(savedCode) {
+        if (code.isBlank() && savedCode != null) code = savedCode.orEmpty()
+    }
+
+    AppCard {
+        SectionLabel("SYNC WITH YOUR OTHER PHONE")
+        Text(
+            "When both phones are on the same Wi-Fi and FocusFlow is running, they discover each other and exchange completed study history directly. " +
+                "No account, cloud database or server is used. Set the exact same sync code on both phones. A router setting called AP/client isolation can prevent local devices from connecting.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        OutlinedTextField(
+            value = code,
+            onValueChange = { code = it.take(128) },
+            label = { Text("Shared sync code (10–128 characters)") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { vm.save(code) }) { Text("Save code") }
+            OutlinedButton(onClick = {
+                code = vm.generate()
+            }) { Text("Generate code") }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                if (savedCode == null) "Not paired" else "Paired on this phone",
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            TextButton(onClick = { vm.clear(); code = "" }, enabled = savedCode != null) { Text("Clear") }
+        }
+        Text(status, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedButton(onClick = vm::syncNow, enabled = savedCode != null) { Text("Sync now") }
+        Text(
+            "Use the same generated code on the second phone. Sync transfers completed sessions, chapters and task results; active sessions stay on the phone where they started. Data is stored locally and shared only with a device that knows the code.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
 
 @Composable
 private fun Stepper(label: String, value: Int, min: Int, max: Int, onChange: (Int) -> Unit) {

@@ -127,9 +127,9 @@ fun AiProvidersScreen(onBack: () -> Unit) {
         item {
             AppCard {
                 Text(
-                    "Optional. FocusFlow works fully without any of this. If you add a provider, your task descriptions and " +
-                        "session facts are sent to that provider when you ask for AI help. API keys are encrypted with the Android " +
-                        "Keystore, are never exported in backups and never written to logs.",
+                    "A selected, working API provider is required for AI task suggestions and session summaries. Your study plan and " +
+                        "session facts are sent to that provider when you request AI help. API keys are encrypted with the Android " +
+                        "Keystore and are never written to logs. If the API is unavailable, tasks can still be added manually.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -140,7 +140,7 @@ fun AiProvidersScreen(onBack: () -> Unit) {
             AppCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(selected = selected == null, onClick = { vm.select(null) })
-                    Text("No external provider (on-device model, then simple rules)")
+                    Text("No API provider (AI features unavailable; manual tasks still work)")
                 }
             }
         }

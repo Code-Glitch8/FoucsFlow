@@ -46,6 +46,7 @@ import com.focusflow.app.data.db.SessionMode
 import com.focusflow.app.data.db.StudyPresetEntity
 import com.focusflow.app.data.db.WidgetType
 import com.focusflow.app.launch.LaunchOutcome
+import com.focusflow.app.launch.SnapGptLauncher
 import com.focusflow.app.data.repo.WidgetSaveResult
 import com.focusflow.app.domain.DayTotal
 import com.focusflow.app.domain.StudyStats
@@ -377,5 +378,56 @@ class WeeklyAnalyticsWidgetProvider : AppWidgetProvider() {
             }
             return bitmap
         }
+    }
+}
+
+
+/** One-tap Android home-screen widget for opening the separate SnapGPT app. */
+class SnapGptWidgetProvider : AppWidgetProvider() {
+    override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
+        ids.forEach { updateWidget(context, it) }
+    }
+
+    companion object {
+        fun refreshAll(context: Context) {
+            val component = ComponentName(context, SnapGptWidgetProvider::class.java)
+            val ids = AppWidgetManager.getInstance(context).getAppWidgetIds(component)
+            ids.forEach { updateWidget(context, it) }
+        }
+
+        private fun updateWidget(context: Context, id: Int) {
+            val installed = SnapGptLauncher.isInstalled(context, SnapGptLauncher.DEFAULT_PACKAGE)
+            val views = RemoteViews(context.packageName, R.layout.widget_snapgpt)
+            views.setTextViewText(R.id.snapgpt_widget_status, if (installed) "READY TO OPEN" else "SNAPGPT NOT INSTALLED")
+            views.setTextViewText(R.id.snapgpt_widget_action, if (installed) "OPEN SNAPGPT" else "OPEN FOCUSFLOW")
+            val launch = Intent(context, SnapGptWidgetActionReceiver::class.java)
+                .setAction(SnapGptWidgetActionReceiver.ACTION_OPEN)
+            val pending = PendingIntent.getBroadcast(
+                context, 61_000 + id, launch,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+            views.setOnClickPendingIntent(R.id.snapgpt_widget_root, pending)
+            views.setOnClickPendingIntent(R.id.snapgpt_widget_action, pending)
+            AppWidgetManager.getInstance(context).updateAppWidget(id, views)
+        }
+    }
+}
+
+/** Keeps the launcher widget click explicit and safely handles a missing SnapGPT installation. */
+class SnapGptWidgetActionReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent?) {
+        if (intent?.action != ACTION_OPEN) return
+        val result = SnapGptLauncher.launch(context.applicationContext, SnapGptLauncher.DEFAULT_PACKAGE)
+        val message = when (result) {
+            SnapGptLauncher.Result.NOT_INSTALLED -> "SnapGPT is not installed on this phone."
+            SnapGptLauncher.Result.LAUNCHED_FLOATING -> "Opening SnapGPT assistant"
+            SnapGptLauncher.Result.LAUNCHED_APP -> "Opening SnapGPT"
+            SnapGptLauncher.Result.FAILED -> "SnapGPT could not be opened."
+        }
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    }
+
+    companion object {
+        const val ACTION_OPEN = "com.focusflow.app.action.OPEN_SNAPGPT_WIDGET"
     }
 }

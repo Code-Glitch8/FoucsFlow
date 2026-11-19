@@ -28,6 +28,7 @@ data class BlockingUiState(
     val shortsMode: ShortsMode = ShortsMode.FOCUS_ONLY,
     val homeRedirect: Boolean = false,
     val blockYoutubeApp: Boolean = true,
+    val blockAllExceptAllowed: Boolean = false,
 ) {
     fun choice(pkg: String) = when {
         pkg in blocked -> AppChoice.BLOCK
@@ -62,6 +63,8 @@ class BlockingViewModel(
         )
     }.combine(settings.blockYoutubeApp) { ui, blockYoutube ->
         ui.copy(blockYoutubeApp = blockYoutube)
+    }.combine(settings.blockAllExceptAllowed) { ui, whitelistMode ->
+        ui.copy(blockAllExceptAllowed = whitelistMode)
     }.combine(settings.homeRedirect) { ui, redirect ->
         ui.copy(homeRedirect = redirect)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BlockingUiState())
@@ -91,4 +94,5 @@ class BlockingViewModel(
     fun setShortsMode(m: ShortsMode) { viewModelScope.launch { settings.setShortsMode(m) } }
     fun setHomeRedirect(v: Boolean) { viewModelScope.launch { settings.setHomeRedirect(v) } }
     fun setBlockYoutubeApp(v: Boolean) { viewModelScope.launch { settings.setBlockYoutubeApp(v) } }
+    fun setBlockAllExceptAllowed(v: Boolean) { viewModelScope.launch { settings.setBlockAllExceptAllowed(v) } }
 }

@@ -28,9 +28,11 @@ class MainActivity : ComponentActivity() {
         AppVisibility.mainVisible.value = true
         // If the process was killed mid-session, the session is still in the database:
         // bring the foreground service (timer, notification) back.
+        val container = (application as FocusFlowApp).container
+        container.wifiSync.syncNow()
         WeeklyAnalyticsWidgetProvider.refreshAll(this)
         lifecycleScope.launch {
-            if ((application as FocusFlowApp).container.sessions.hasActive()) {
+            if (container.sessions.hasActive()) {
                 FocusSessionService.start(this@MainActivity)
             }
         }

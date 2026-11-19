@@ -185,7 +185,7 @@ fun BlockingScreen(onBack: () -> Unit, onTestDetector: () -> Unit) {
         item {
             SectionLabel("APPS · ${ui.blocked.size} blocked · ${ui.allowed.size} allowed")
             Text(
-                "Blocked apps close during a session. Allowed apps are never blocked, even if a category was added.",
+                "Blocked apps close during a session. Allowed apps bypass the list; the separate full-YouTube switch can still block YouTube.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

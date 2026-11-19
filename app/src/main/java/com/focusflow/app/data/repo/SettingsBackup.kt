@@ -16,6 +16,7 @@ data class SettingsSnapshot(
     val defaultDurationMin: Int? = null,
     val shortsMode: String? = null,
     val homeRedirect: Boolean? = null,
+    val blockAllExceptAllowed: Boolean? = null,
     val floatingEnabled: Boolean? = null,
     val snapGptEnabled: Boolean? = null,
     val snapGptPackage: String? = null,
@@ -39,6 +40,7 @@ object SettingsBackup {
         s.defaultDurationMin?.let { o.put("defaultDurationMin", it) }
         s.shortsMode?.let { o.put("shortsMode", it) }
         s.homeRedirect?.let { o.put("homeRedirect", it) }
+        s.blockAllExceptAllowed?.let { o.put("blockAllExceptAllowed", it) }
         s.floatingEnabled?.let { o.put("floatingEnabled", it) }
         s.snapGptEnabled?.let { o.put("snapGptEnabled", it) }
         s.snapGptPackage?.let { o.put("snapGptPackage", it) }
@@ -60,7 +62,7 @@ object SettingsBackup {
             SettingsSnapshot(
                 theme = str("theme"), defaultMode = str("defaultMode"),
                 defaultDurationMin = if (o.has("defaultDurationMin")) o.optInt("defaultDurationMin") else null,
-                shortsMode = str("shortsMode"), homeRedirect = bool("homeRedirect"), floatingEnabled = bool("floatingEnabled"),
+                shortsMode = str("shortsMode"), homeRedirect = bool("homeRedirect"), blockAllExceptAllowed = bool("blockAllExceptAllowed"), floatingEnabled = bool("floatingEnabled"),
                 snapGptEnabled = bool("snapGptEnabled"), snapGptPackage = str("snapGptPackage"),
                 providers = providers, selectedProvider = str("selectedProvider"),
             ),

@@ -25,9 +25,8 @@ class AppSettings(private val context: Context) {
         val shortsMode = stringPreferencesKey("youtube_shorts_mode")
         val homeRedirect = booleanPreferencesKey("youtube_home_redirect")
         val blockYoutubeApp = booleanPreferencesKey("youtube_app_blocked")
+        val blockAllExceptAllowed = booleanPreferencesKey("block_all_except_allowed")
         val floatingEnabled = booleanPreferencesKey("floating_enabled")
-        val aiEnabled = booleanPreferencesKey("ai_enabled")
-        val aiModelFile = stringPreferencesKey("ai_model_file")
         val voiceOfflineOnly = booleanPreferencesKey("voice_offline_only")
         val bubbleX = intPreferencesKey("bubble_x")
         val bubbleY = intPreferencesKey("bubble_y")
@@ -50,6 +49,7 @@ class AppSettings(private val context: Context) {
     val homeRedirect: Flow<Boolean> = store.data.map { it[Keys.homeRedirect] ?: false }
     /** Full YouTube app blocking is on by default during focus sessions; users can switch it off. */
     val blockYoutubeApp: Flow<Boolean> = store.data.map { it[Keys.blockYoutubeApp] ?: true }
+    val blockAllExceptAllowed: Flow<Boolean> = store.data.map { it[Keys.blockAllExceptAllowed] ?: false }
 
     val floatingEnabled: Flow<Boolean> = store.data.map { it[Keys.floatingEnabled] ?: true }
 
@@ -60,8 +60,6 @@ class AppSettings(private val context: Context) {
         if (x != null && y != null) x to y else null
     }
 
-    val aiEnabled: Flow<Boolean> = store.data.map { it[Keys.aiEnabled] ?: true }
-    val aiModelFile: Flow<String?> = store.data.map { it[Keys.aiModelFile] }
     /** When true, voice input is only allowed with an on-device recognizer (never sends audio to a server). */
     val voiceOfflineOnly: Flow<Boolean> = store.data.map { it[Keys.voiceOfflineOnly] ?: true }
 
@@ -86,8 +84,6 @@ class AppSettings(private val context: Context) {
     suspend fun setAiSelectedProvider(id: String?) =
         store.edit { if (id == null) it.remove(Keys.aiSelectedProvider) else it[Keys.aiSelectedProvider] = id }
 
-    suspend fun setAiEnabled(v: Boolean) = store.edit { it[Keys.aiEnabled] = v }
-    suspend fun setAiModelFile(name: String?) = store.edit { if (name == null) it.remove(Keys.aiModelFile) else it[Keys.aiModelFile] = name }
     suspend fun setVoiceOfflineOnly(v: Boolean) = store.edit { it[Keys.voiceOfflineOnly] = v }
 
     suspend fun setFloatingEnabled(enabled: Boolean) = store.edit { it[Keys.floatingEnabled] = enabled }
@@ -98,6 +94,7 @@ class AppSettings(private val context: Context) {
     suspend fun setShortsMode(mode: ShortsMode) = store.edit { it[Keys.shortsMode] = mode.name }
     suspend fun setHomeRedirect(enabled: Boolean) = store.edit { it[Keys.homeRedirect] = enabled }
     suspend fun setBlockYoutubeApp(enabled: Boolean) = store.edit { it[Keys.blockYoutubeApp] = enabled }
+    suspend fun setBlockAllExceptAllowed(enabled: Boolean) = store.edit { it[Keys.blockAllExceptAllowed] = enabled }
 
     suspend fun setThemeMode(mode: ThemeMode) = store.edit { it[Keys.theme] = mode.name }
     suspend fun setDefaultMode(mode: SessionMode) = store.edit { it[Keys.defaultMode] = mode.name }

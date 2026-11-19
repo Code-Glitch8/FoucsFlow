@@ -51,6 +51,21 @@ class BlockPolicyTest {
     }
 
     @Test
+    fun `strict whitelist blocks every non-essential app not allowed`() {
+        val input = base.copy(blockAllExceptAllowed = true, allowed = setOf("com.notes"))
+        assertTrue(BlockPolicy.shouldBlockApp("com.notes2", input))
+        assertFalse(BlockPolicy.shouldBlockApp("com.notes", input))
+        assertFalse(BlockPolicy.shouldBlockApp("com.dialer", input))
+    }
+
+    @Test
+    fun `strict whitelist lifts on earned breaks but explicit break blocks remain`() {
+        val input = base.copy(blockAllExceptAllowed = true, onBreak = true)
+        assertFalse(BlockPolicy.shouldBlockApp("com.notes", input))
+        assertTrue(BlockPolicy.shouldBlockApp("com.social", input))
+    }
+
+    @Test
     fun `null or empty package is ignored`() {
         assertFalse(BlockPolicy.shouldBlockApp(null, base))
         assertFalse(BlockPolicy.shouldBlockApp("", base))
