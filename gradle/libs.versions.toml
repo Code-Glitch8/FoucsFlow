@@ -13,7 +13,6 @@ coroutines = "1.10.2"
 junit = "4.13.2"
 robolectric = "4.16"
 androidxTestCore = "1.7.0"
-litertlm = "0.18.0"
 orgJson = "20240303"
 
 [libraries]
@@ -40,7 +39,6 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 junit = { module = "junit:junit", version.ref = "junit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }
-litertlm-android = { module = "com.google.ai.edge.litertlm:litertlm-android", version.ref = "litertlm" }
 org-json = { module = "org.json:json", version.ref = "orgJson" }
 
 [plugins]

@@ -237,9 +237,9 @@ fun SettingsScreen(onOpenBlocking: () -> Unit, onOpenAi: () -> Unit, onOpenData:
 
         item {
             AppCard {
-                SectionLabel("OFFLINE AI & VOICE")
+                SectionLabel("AI API & VOICE")
                 Text(
-                    "Download or import an on-device model, and choose how voice input behaves.",
+                    "Configure the API used for task suggestions and summaries, and choose how voice input behaves.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

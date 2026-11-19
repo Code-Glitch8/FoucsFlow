@@ -26,8 +26,6 @@ class AppSettings(private val context: Context) {
         val homeRedirect = booleanPreferencesKey("youtube_home_redirect")
         val blockYoutubeApp = booleanPreferencesKey("youtube_app_blocked")
         val floatingEnabled = booleanPreferencesKey("floating_enabled")
-        val aiEnabled = booleanPreferencesKey("ai_enabled")
-        val aiModelFile = stringPreferencesKey("ai_model_file")
         val voiceOfflineOnly = booleanPreferencesKey("voice_offline_only")
         val bubbleX = intPreferencesKey("bubble_x")
         val bubbleY = intPreferencesKey("bubble_y")
@@ -60,8 +58,6 @@ class AppSettings(private val context: Context) {
         if (x != null && y != null) x to y else null
     }
 
-    val aiEnabled: Flow<Boolean> = store.data.map { it[Keys.aiEnabled] ?: true }
-    val aiModelFile: Flow<String?> = store.data.map { it[Keys.aiModelFile] }
     /** When true, voice input is only allowed with an on-device recognizer (never sends audio to a server). */
     val voiceOfflineOnly: Flow<Boolean> = store.data.map { it[Keys.voiceOfflineOnly] ?: true }
 
@@ -86,8 +82,6 @@ class AppSettings(private val context: Context) {
     suspend fun setAiSelectedProvider(id: String?) =
         store.edit { if (id == null) it.remove(Keys.aiSelectedProvider) else it[Keys.aiSelectedProvider] = id }
 
-    suspend fun setAiEnabled(v: Boolean) = store.edit { it[Keys.aiEnabled] = v }
-    suspend fun setAiModelFile(name: String?) = store.edit { if (name == null) it.remove(Keys.aiModelFile) else it[Keys.aiModelFile] = name }
     suspend fun setVoiceOfflineOnly(v: Boolean) = store.edit { it[Keys.voiceOfflineOnly] = v }
 
     suspend fun setFloatingEnabled(enabled: Boolean) = store.edit { it[Keys.floatingEnabled] = enabled }

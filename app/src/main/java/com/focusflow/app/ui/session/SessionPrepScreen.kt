@@ -291,9 +291,9 @@ fun SessionPrepScreen(presetId: Long? = null, onBack: () -> Unit, onManageSubjec
                 item {
                     AppCard {
                         val label = when (ui.ai.origin) {
-                            com.focusflow.app.data.db.TaskOrigin.ON_DEVICE_AI -> "SUGGESTED BY ON-DEVICE AI"
-                            com.focusflow.app.data.db.TaskOrigin.EXTERNAL_AI -> "SUGGESTED BY EXTERNAL AI PROVIDER" + (ui.ai.provider?.let { " ($it)" } ?: "")
-                            else -> "SUGGESTED BY SIMPLE RULES (NOT AI)"
+                            com.focusflow.app.data.db.TaskOrigin.ON_DEVICE_AI -> "LEGACY ON-DEVICE AI SUGGESTIONS"
+                            com.focusflow.app.data.db.TaskOrigin.EXTERNAL_AI -> "SUGGESTED BY API AI" + (ui.ai.provider?.let { " ($it)" } ?: "")
+                            else -> "API AI UNAVAILABLE"
                         }
                         SectionLabel(label)
                         ui.ai.note?.let {

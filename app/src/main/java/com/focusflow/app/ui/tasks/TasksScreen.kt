@@ -135,9 +135,9 @@ private fun contextLine(state: TasksUiState, task: TaskEntity): String {
         state.chapterName(task.chapterId),
         task.estimatedMinutes?.let { "~$it min" },
         when (task.origin) {
-            TaskOrigin.ON_DEVICE_AI -> "on-device AI"
-            TaskOrigin.EXTERNAL_AI -> "external AI"
-            TaskOrigin.RULE_BASED -> "rule-based"
+            TaskOrigin.ON_DEVICE_AI -> "legacy on-device AI"
+            TaskOrigin.EXTERNAL_AI -> "API AI"
+            TaskOrigin.RULE_BASED -> "legacy rule-based"
             TaskOrigin.MANUAL -> null
         },
     )

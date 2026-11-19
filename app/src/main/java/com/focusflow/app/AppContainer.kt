@@ -2,8 +2,6 @@ package com.focusflow.app
 
 import android.content.Context
 import com.focusflow.app.ai.AiService
-import com.focusflow.app.ai.LocalLlm
-import com.focusflow.app.ai.ModelManager
 import com.focusflow.app.ai.external.ProviderRepository
 import com.focusflow.app.data.security.KeystoreSecretStore
 import com.focusflow.app.data.security.SecretStore
@@ -47,9 +45,7 @@ class AppContainer(context: Context) {
     val backup = BackupRepository(appContext, database, sessions, settings, subjects)
     val blockState = BlockStateHolder(sessions, blockRules, settings, appScope)
 
-    val models = ModelManager(appContext, appScope, settings)
-    val llm = LocalLlm(appContext, appScope)
     val secrets: SecretStore = KeystoreSecretStore(appContext)
     val aiProviders = ProviderRepository(settings, secrets)
-    val ai = AiService(models, llm, settings, aiProviders)
+    val ai = AiService(aiProviders)
 }
