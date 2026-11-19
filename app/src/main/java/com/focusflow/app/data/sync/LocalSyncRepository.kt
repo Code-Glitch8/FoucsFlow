@@ -43,11 +43,12 @@ class LocalSyncRepository(context: Context) {
         "focusflow_local_sync_key",
     )
 
-    val deviceId: String = secure.get("device_id") ?: UUID.randomUUID().toString().also {
-        secure.put("device_id", it)
+    val deviceId: String = readSecure("device_id") ?: UUID.randomUUID().toString().also {
+        // Android Keystore is unavailable in some JVM test environments; keep a temporary ID there.
+        writeSecure("device_id", it)
     }
 
-    private val _pairingCode = MutableStateFlow(secure.get("pairing_code"))
+    private val _pairingCode = MutableStateFlow(readSecure("pairing_code"))
     val pairingCode: StateFlow<String?> = _pairingCode.asStateFlow()
     private val _records = MutableStateFlow(readRecords())
     val records: StateFlow<List<SyncedSession>> = _records.asStateFlow()
@@ -55,13 +56,13 @@ class LocalSyncRepository(context: Context) {
     fun savePairingCode(value: String): Boolean {
         val clean = value.trim()
         if (clean.length !in 10..128) return false
-        secure.put("pairing_code", clean)
+        if (!writeSecure("pairing_code", clean)) return false
         _pairingCode.value = clean
         return true
     }
 
     fun clearPairingCode() {
-        secure.put("pairing_code", null)
+        writeSecure("pairing_code", null)
         _pairingCode.value = null
     }
 
@@ -78,7 +79,7 @@ class LocalSyncRepository(context: Context) {
         val result = merged.values.sortedByDescending { it.startedAt }.take(MAX_RECORDS)
         val changed = result.count { before[it.globalId] != it }
         _records.value = result
-        secure.put(RECORDS_KEY, encodeRecords(result))
+        writeSecure(RECORDS_KEY, encodeRecords(result))
         return changed
     }
 
@@ -111,9 +112,15 @@ class LocalSyncRepository(context: Context) {
     }
 
     private fun readRecords(): List<SyncedSession> = runCatching {
-        val raw = secure.get(RECORDS_KEY) ?: return emptyList()
+        val raw = readSecure(RECORDS_KEY) ?: return emptyList()
         decodeRecords(raw)
     }.getOrDefault(emptyList())
+
+    private fun readSecure(name: String): String? = runCatching { secure.get(name) }.getOrNull()
+
+    /** Never falls back to plaintext if Keystore is unavailable. */
+    private fun writeSecure(name: String, value: String?): Boolean =
+        runCatching { secure.put(name, value) }.isSuccess
 
     private fun encodeRecords(records: List<SyncedSession>): String =
         JSONArray().apply { records.forEach { put(it.toJson()) } }.toString()
