@@ -15,6 +15,7 @@ class FocusFlowApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        container.wifiSync.start(appScope)
         appScope.launch {
             container.subjects.ensureBuiltIns()
             container.subjects.ensureClass11Chapters(container.settings)

@@ -19,6 +19,8 @@ import com.focusflow.app.data.repo.TaskRepository
 import com.focusflow.app.data.repo.WidgetRepository
 import com.focusflow.app.launch.SessionLauncher
 import com.focusflow.app.data.settings.AppSettings
+import com.focusflow.app.data.sync.LocalSyncRepository
+import com.focusflow.app.service.WifiPeerSyncManager
 import com.focusflow.app.service.BlockStateHolder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,7 +41,9 @@ class AppContainer(context: Context) {
     val blockRules = BlockRulesRepository(database)
     val widgets = WidgetRepository(database)
     val launcher = SessionLauncher(appContext, sessions, presets, subjects, tasks, widgets, settings)
-    val history = HistoryRepository(database)
+    val sync = LocalSyncRepository(appContext)
+    val history = HistoryRepository(database, sync)
+    val wifiSync = WifiPeerSyncManager(sync, history)
     val backup = BackupRepository(appContext, database, sessions, settings, subjects)
     val blockState = BlockStateHolder(sessions, blockRules, settings, appScope)
 
