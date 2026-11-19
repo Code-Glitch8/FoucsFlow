@@ -80,7 +80,7 @@ jobs:
               t+=int(r.get("tests",0)); f+=int(r.get("failures",0)); e+=int(r.get("errors",0)); s+=int(r.get("skipped",0))
           print(f"Unit tests: **{t}** run, **{f}** failed, **{e}** errors, **{s}** skipped")
           PY
-          } >> "$GITHUB_STEP_SUMMARY"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Surface build errors as annotations
         if: failure()
