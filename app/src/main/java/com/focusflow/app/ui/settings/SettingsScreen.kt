@@ -113,6 +113,8 @@ fun SettingsScreen(onOpenBlocking: () -> Unit, onOpenAi: () -> Unit, onOpenData:
             }
         }
 
+        item { SnapGptSettingsCard() }
+
         item {
             AppCard {
                 SectionLabel("EARNED BREAKS")

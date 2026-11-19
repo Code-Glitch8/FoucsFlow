@@ -8,6 +8,7 @@ import com.focusflow.app.data.db.BlockedApplicationEntity
 import com.focusflow.app.data.db.BreakConfigurationEntity
 import com.focusflow.app.data.db.FocusFlowDatabase
 import com.focusflow.app.data.db.PresetChapterEntity
+import com.focusflow.app.data.db.PresetTaskEntity
 import com.focusflow.app.data.db.SessionMode
 import com.focusflow.app.data.db.StudyPresetEntity
 import com.focusflow.app.domain.BreakConfig
@@ -36,7 +37,9 @@ data class PresetDraft(
     val floatingAssistant: Boolean = true,
     val blockedApps: List<BlockedAppRule> = emptyList(),
     val allowedApps: List<AllowedAppRule> = emptyList(),
-    val breakConfig: BreakConfig = BreakConfig(),
+    /** null = inherit the global break rules (no preset-specific row is stored). */
+    val breakConfig: BreakConfig? = null,
+    val tasks: List<DraftTask> = emptyList(),
 )
 
 class PresetRepository(private val db: FocusFlowDatabase) {
@@ -62,7 +65,15 @@ class PresetRepository(private val db: FocusFlowDatabase) {
                 BlockedAppRule(it.packageName, it.label, it.category, it.blockedDuringBreak)
             },
             allowedApps = rules.getAllowedForPreset(presetId).map { AllowedAppRule(it.packageName, it.label) },
-            breakConfig = bc?.toConfig() ?: BreakConfig(),
+            breakConfig = bc?.toConfig(),
+            tasks = presets.tasks(presetId).map {
+                DraftTask(
+                    title = it.title,
+                    estimatedMinutes = it.estimatedMinutes,
+                    chapterId = it.chapterId,
+                    subtasks = it.subtasks.lines().map(String::trim).filter(String::isNotEmpty),
+                )
+            },
         )
     }
 
@@ -107,7 +118,20 @@ class PresetRepository(private val db: FocusFlowDatabase) {
                     draft.allowedApps.map { AllowedApplicationEntity(presetId = presetId, packageName = it.packageName, label = it.label) },
                 )
                 rules.clearBreakConfigForPreset(presetId)
-                rules.insertBreakConfig(draft.breakConfig.toEntity(presetId))
+                draft.breakConfig?.let { rules.insertBreakConfig(it.toEntity(presetId)) }
+                presets.clearTasks(presetId)
+                presets.insertTasks(
+                    draft.tasks.filter { TaskNormalizer.clean(it.title).isNotEmpty() }.mapIndexed { i, t ->
+                        PresetTaskEntity(
+                            presetId = presetId,
+                            title = TaskNormalizer.clean(t.title),
+                            estimatedMinutes = t.estimatedMinutes,
+                            chapterId = t.chapterId,
+                            subtasks = t.subtasks.joinToString("\n"),
+                            position = i,
+                        )
+                    },
+                )
                 presetId
             }
             SaveResult.Saved(id)

@@ -43,6 +43,8 @@ private const val ROUTE_SUMMARY = "summary/{id}"
 private const val ROUTE_BLOCKING = "blocking"
 private const val ROUTE_DETECTOR = "detector"
 private const val ROUTE_AI = "ai"
+private const val ROUTE_AI_PROVIDERS = "ai_providers"
+private const val ROUTE_WIDGETS = "widgets"
 private const val ROUTE_DATA = "data"
 
 /**
@@ -106,8 +108,12 @@ fun FocusFlowRoot() {
                         onOpenFocus = { navController.navigate(Destination.Focus.route) { launchSingleTop = true } },
                         onOpenSession = { navController.navigate("summary/$it") },
                         onOpenHistory = { navController.navigate(ROUTE_HISTORY) },
+                        onEditWidgets = { navController.navigate(ROUTE_WIDGETS) },
+                        onOpenTasks = { navController.navigate(Destination.Tasks.route) { launchSingleTop = true } },
+                        onOpenStatistics = { navController.navigate(Destination.Statistics.route) { launchSingleTop = true } },
                     )
                 }
+                composable(ROUTE_WIDGETS) { com.focusflow.app.ui.widgets.WidgetsScreen(onBack = { navController.popBackStack() }) }
                 composable(Destination.Tasks.route) {
                     TasksScreen(onManageSubjects = { navController.navigate(ROUTE_SUBJECTS) })
                 }
@@ -147,7 +153,13 @@ fun FocusFlowRoot() {
                     )
                 }
                 composable(ROUTE_DATA) { com.focusflow.app.ui.settings.DataSettingsScreen(onBack = { navController.popBackStack() }) }
-                composable(ROUTE_AI) { com.focusflow.app.ui.settings.AiSettingsScreen(onBack = { navController.popBackStack() }) }
+                composable(ROUTE_AI) {
+                    com.focusflow.app.ui.settings.AiSettingsScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenProviders = { navController.navigate(ROUTE_AI_PROVIDERS) },
+                    )
+                }
+                composable(ROUTE_AI_PROVIDERS) { com.focusflow.app.ui.settings.AiProvidersScreen(onBack = { navController.popBackStack() }) }
                 composable(ROUTE_DETECTOR) { DetectorTestScreen(onBack = { navController.popBackStack() }) }
                 composable(
                     ROUTE_PREPARE_PATTERN,

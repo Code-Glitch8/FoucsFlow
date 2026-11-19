@@ -21,8 +21,10 @@ import androidx.room.migration.Migration
         AllowedApplicationEntity::class,
         BreakConfigurationEntity::class,
         SessionSummaryEntity::class,
+        PresetTaskEntity::class,
+        DashboardWidgetEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class FocusFlowDatabase : RoomDatabase() {
@@ -32,6 +34,7 @@ abstract class FocusFlowDatabase : RoomDatabase() {
     abstract fun sessionDao(): SessionDao
     abstract fun presetDao(): PresetDao
     abstract fun appRuleDao(): AppRuleDao
+    abstract fun widgetDao(): WidgetDao
 
     companion object {
         /**
@@ -39,7 +42,7 @@ abstract class FocusFlowDatabase : RoomDatabase() {
          * NOT enabled: losing a user's study history on an app update is worse than a crash
          * that a developer will notice.
          */
-        val MIGRATIONS: Array<Migration> = emptyArray()
+        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2)
 
         private const val DB_NAME = "focusflow.db"
         const val PENDING_IMPORT = "pending_import.db"
@@ -64,7 +67,7 @@ abstract class FocusFlowDatabase : RoomDatabase() {
             }
         }
 
-        const val CURRENT_VERSION = 1
+        const val CURRENT_VERSION = 2
 
         fun build(context: Context): FocusFlowDatabase {
             applyPendingImport(context)

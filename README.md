@@ -60,3 +60,41 @@ MVVM, manual dependency container (`AppContainer`), single Activity with Compose
 ## Permissions
 
 Notifications (ongoing session), Accessibility (app blocking, YouTube detection — reads package names, and screen elements only inside YouTube), Display over other apps (block screen and bubble), Usage access (optional fallback), Microphone (voice input, asked on tap), Internet (model download only).
+
+## Dashboard widgets, shared session start, AI providers (schema v2)
+
+**Dashboard widgets.** The Home tab shows configurable widgets (Timer, Open-ended, Homework, Subject, Saved setup, Custom).
+Tapping one starts its session immediately - no setup screen. *Edit dashboard* adds, edits, deletes, reorders and hides widgets;
+they are stored in Room (`dashboard_widgets`, stable UUID ids) and survive restarts. If a session is already running, the tap
+shows a message with an "Open session" action instead of starting a second one. If the floating assistant is wanted but the
+overlay permission is missing, a dialog explains it and offers to enable it (the tap resumes when you return) or start without the bubble.
+
+**One start path.** `launch/SessionLauncher` is the only place that starts a session: it writes the session through
+`SessionRepository.start` (single active session, tasks/chapters linked, history recorded like any other session), starts
+`FocusSessionService` (timer/stopwatch, notification, blocking, floating bubble react to the stored session) and does the optional
+SnapGPT hand-off. The preparation screen, widgets and presets all use it. `WidgetDraftBuilder` turns a widget into a `SessionDraft` (pure, unit tested).
+
+**Presets** now also store tasks/subtasks (`preset_tasks`), Shorts and floating-assistant switches, app lists and break rules.
+A preset without its own app lists/break rules inherits the global ones. While a preset session runs, its own app lists apply
+(global lists otherwise). Updating a preset starts from the stored preset so nothing is erased.
+
+**Class 11 chapters.** NCERT Mathematics (14), Physics (14) and Chemistry (9) are added on first launch after the update, once
+per `Class11Chapters.SEED_VERSION`, with `INSERT IGNORE` against the unique (subject, name) index: no duplicates, no overwriting of
+user chapters, nothing deleted, and a default chapter you delete does not come back. Lists follow the current rationalised NCERT books
+(chapters NCERT removed, e.g. Mathematical Reasoning, States of Matter, Hydrogen, s-Block, are not seeded; add them by hand if your school still uses them).
+
+**AI order.** 1) the provider you select in *Settings > AI > Manage providers* (OpenAI-compatible, OpenRouter, Gemini; endpoint, model,
+test button, enable switch), 2) the downloaded on-device model, 3) built-in rules / plain template. Every result says which one produced it.
+API keys are encrypted with an Android Keystore AES-GCM key, are never logged, never put in URLs, and are never exported. No key is needed to use the app.
+
+**SnapGPT.** Off by default (*Settings > SnapGPT*). FocusFlow can only use what SnapGPT exports. It looks for an activity answering
+`com.snapgpt.action.SHOW_FLOATING` (a contract SnapGPT would have to add to show its floating interface) and otherwise opens SnapGPT's normal
+launcher activity - once per session - in the package you configure (default `com.snapgpt.assistant`, an assumption: change it to the real id).
+If SnapGPT is not installed nothing happens. The focus timer runs in FocusFlow's service, so switching apps never interrupts it.
+
+**Backups.** The database export includes subjects, chapters, tasks, presets and widgets (import replaces the data, so nothing is duplicated;
+older v1 backups are migrated on open, newer ones are refused). *Export settings* writes a JSON file with settings and provider endpoints/models,
+never API keys.
+
+**CI.** `.github/workflows/android.yml` runs a secret-scan, unit tests (JVM + Robolectric/Room), builds the debug APK and an unsigned release APK,
+and uploads the APKs and test reports. Release signing is intentionally not configured in the repo.

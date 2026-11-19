@@ -19,6 +19,11 @@
 
     <!-- Lets the app list launchable apps for the blocklist without the broad QUERY_ALL_PACKAGES permission. -->
     <queries>
+        <!-- Optional SnapGPT hand-off (see SnapGptLauncher). -->
+        <package android:name="com.snapgpt.assistant" />
+        <intent>
+            <action android:name="com.snapgpt.action.SHOW_FLOATING" />
+        </intent>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />

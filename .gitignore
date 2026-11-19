@@ -12,3 +12,5 @@
 *.keystore
 *.jks
 build.log
+release.log
+all.log

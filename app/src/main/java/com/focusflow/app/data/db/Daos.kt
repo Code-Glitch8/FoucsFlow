@@ -241,6 +241,45 @@ interface PresetDao {
 
     @Query("SELECT * FROM preset_chapters")
     suspend fun getAllPresetChapters(): List<PresetChapterEntity>
+
+    @Query("SELECT * FROM preset_tasks WHERE presetId = :presetId ORDER BY position, id")
+    suspend fun tasks(presetId: Long): List<PresetTaskEntity>
+
+    @Query("DELETE FROM preset_tasks WHERE presetId = :presetId")
+    suspend fun clearTasks(presetId: Long)
+
+    @Insert
+    suspend fun insertTasks(tasks: List<PresetTaskEntity>)
+}
+
+@Dao
+interface WidgetDao {
+    @Query("SELECT * FROM dashboard_widgets ORDER BY position, createdAt, id")
+    fun observeAll(): Flow<List<DashboardWidgetEntity>>
+
+    @Query("SELECT * FROM dashboard_widgets ORDER BY position, createdAt, id")
+    suspend fun getAll(): List<DashboardWidgetEntity>
+
+    @Query("SELECT * FROM dashboard_widgets WHERE id = :id")
+    suspend fun getById(id: String): DashboardWidgetEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(widget: DashboardWidgetEntity)
+
+    @Query("DELETE FROM dashboard_widgets WHERE id = :id")
+    suspend fun delete(id: String)
+
+    @Query("UPDATE dashboard_widgets SET position = :position WHERE id = :id")
+    suspend fun setPosition(id: String, position: Int)
+
+    @Query("UPDATE dashboard_widgets SET visible = :visible WHERE id = :id")
+    suspend fun setVisible(id: String, visible: Boolean)
+
+    @Query("SELECT COALESCE(MAX(position), -1) + 1 FROM dashboard_widgets")
+    suspend fun nextPosition(): Int
+
+    @Query("SELECT COUNT(*) FROM dashboard_widgets")
+    suspend fun count(): Int
 }
 
 @Dao
@@ -251,6 +290,12 @@ interface AppRuleDao {
 
     @Query("SELECT * FROM blocked_applications WHERE presetId IS NULL")
     suspend fun getGlobalBlocked(): List<BlockedApplicationEntity>
+
+    @Query("SELECT * FROM blocked_applications WHERE presetId = :presetId")
+    fun observeBlockedForPreset(presetId: Long): Flow<List<BlockedApplicationEntity>>
+
+    @Query("SELECT * FROM allowed_applications WHERE presetId = :presetId")
+    fun observeAllowedForPreset(presetId: Long): Flow<List<AllowedApplicationEntity>>
 
     @Query("SELECT * FROM blocked_applications WHERE presetId = :presetId")
     suspend fun getBlockedForPreset(presetId: Long): List<BlockedApplicationEntity>

@@ -51,6 +51,8 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // Robolectric needs merged resources/manifest to run Room and Context based tests on the JVM.
+        unitTests.isIncludeAndroidResources = true
     }
 }
 
@@ -89,4 +91,6 @@ dependencies {
     // Android's org.json is stubbed in unit tests, so use the real library there.
     testImplementation(libs.org.json)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
 }

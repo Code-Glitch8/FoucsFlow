@@ -193,7 +193,10 @@ fun BlockingScreen(onBack: () -> Unit, onTestDetector: () -> Unit) {
         items(ui.visible, key = { it.packageName }) { app ->
             val choice = ui.choice(app.packageName)
             AppCard {
-                Text(app.label, style = MaterialTheme.typography.titleMedium)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    AppIcon(app.packageName)
+                    Text(app.label, style = MaterialTheme.typography.titleMedium)
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(selected = choice == AppChoice.BLOCK, onClick = { vm.choose(app, if (choice == AppChoice.BLOCK) AppChoice.NONE else AppChoice.BLOCK) }, label = { Text("Block") })
                     FilterChip(selected = choice == AppChoice.ALLOW, onClick = { vm.choose(app, if (choice == AppChoice.ALLOW) AppChoice.NONE else AppChoice.ALLOW) }, label = { Text("Allow") })
@@ -236,8 +239,8 @@ private enum class Explain(val title: String, val body: String) {
     ),
     Overlay(
         "Allow display over other apps",
-        "This lets FocusFlow show the block screen reliably and, in a later update of this app, the floating " +
-            "study assistant over the apps you are allowed to use.",
+        "This lets FocusFlow show the block screen reliably and the floating study assistant over the apps " +
+            "you are allowed to use. Without it, sessions still run; only the bubble is skipped.",
     ),
 }
 

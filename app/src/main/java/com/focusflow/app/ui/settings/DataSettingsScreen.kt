@@ -51,6 +51,8 @@ class DataSettingsViewModel(private val backup: BackupRepository, private val pr
     private fun report(r: BackupResult) { status.value = when (r) { is BackupResult.Done -> r.message; is BackupResult.Failed -> r.reason } }
 
     fun export(uri: android.net.Uri) { viewModelScope.launch { report(backup.export(uri)) } }
+    fun exportSettings(uri: android.net.Uri) { viewModelScope.launch { report(backup.exportSettings(uri)) } }
+    fun importSettings(uri: android.net.Uri) { viewModelScope.launch { report(backup.importSettings(uri)) } }
     fun import(uri: android.net.Uri) { viewModelScope.launch { val r = backup.stageImport(uri); importStaged.value = r is BackupResult.Done; report(r) } }
     fun resetHistory() { viewModelScope.launch { report(backup.resetHistory()) } }
     fun resetEverything() { viewModelScope.launch { report(backup.resetEverything()) } }
@@ -71,6 +73,8 @@ fun DataSettingsScreen(onBack: () -> Unit) {
     var deletePreset by remember { mutableStateOf<StudyPresetEntity?>(null) }
 
     val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri -> if (uri != null) vm.export(uri) }
+    val settingsExporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> if (uri != null) vm.exportSettings(uri) }
+    val settingsImporter = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) vm.importSettings(uri) }
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) { pendingImport = uri; confirm = Confirm.IMPORT } }
 
     when (confirm) {
@@ -99,7 +103,7 @@ fun DataSettingsScreen(onBack: () -> Unit) {
                 SectionLabel("PRIVACY")
                 Text(
                     "Everything stays on this phone. FocusFlow has no accounts, analytics, ads or uploads. " +
-                        "The only network use is downloading an AI model when you press Download.",
+                        "Network is used only when you download an AI model or use an AI provider you set up yourself.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -121,13 +125,23 @@ fun DataSettingsScreen(onBack: () -> Unit) {
             AppCard {
                 SectionLabel("BACKUP")
                 Text(
-                    "Export saves your subjects, chapters, tasks, sessions, summaries, presets and blocking choices to a file you pick. " +
-                        "Theme and other settings are not included.",
+                    "Export saves your subjects, chapters, tasks, sessions, summaries, presets, dashboard widgets and blocking choices to a file you pick. " +
+                        "Settings have their own export below. Importing a backup replaces your data, so widgets and chapters are never duplicated.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = { exporter.launch("focusflow-backup.db") }) { Text("Export") }
                     OutlinedButton(onClick = { importer.launch(arrayOf("*/*")) }) { Text("Import") }
+                }
+                SectionLabel("SETTINGS (NO SECRETS)")
+                Text(
+                    "Exports theme, defaults, switches, SnapGPT option and AI provider endpoints/models. API keys are never exported: " +
+                        "they are encrypted with this phone's Keystore and cannot be moved safely without a passphrase, so enter them again after restoring.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { settingsExporter.launch("focusflow-settings.json") }) { Text("Export settings") }
+                    OutlinedButton(onClick = { settingsImporter.launch(arrayOf("application/json", "*/*")) }) { Text("Import settings") }
                 }
                 if (staged) OutlinedButton(onClick = { activity?.finishAffinity() }) { Text("Close app now") }
                 status?.let { Text(it) }

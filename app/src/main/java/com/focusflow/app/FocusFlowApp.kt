@@ -15,6 +15,10 @@ class FocusFlowApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
-        appScope.launch { container.subjects.ensureBuiltIns() }
+        appScope.launch {
+            container.subjects.ensureBuiltIns()
+            container.subjects.ensureClass11Chapters(container.settings)
+            container.widgets.seedDefaults(container.settings, container.subjects)
+        }
     }
 }

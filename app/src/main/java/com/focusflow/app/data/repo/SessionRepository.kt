@@ -59,6 +59,8 @@ data class SessionDraft(
     val strict: Boolean,
     val presetId: Long?,
     val tasks: List<DraftTask>,
+    val floatingAssistant: Boolean = true,
+    val blockShorts: Boolean = true,
 )
 
 sealed interface StartResult {
@@ -134,6 +136,8 @@ class SessionRepository(
                     strict = draft.strict,
                     description = draft.description.trim(),
                     presetId = draft.presetId,
+                    floatingAssistant = draft.floatingAssistant,
+                    blockShorts = draft.blockShorts,
                 ),
             )
 

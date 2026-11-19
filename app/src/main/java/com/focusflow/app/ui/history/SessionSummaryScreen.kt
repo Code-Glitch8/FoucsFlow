@@ -141,6 +141,7 @@ fun SessionSummaryScreen(sessionId: Long, onBack: () -> Unit, onStartNext: () ->
             AppCard {
                 val label = when (summary?.source) {
                     SummarySource.ON_DEVICE_AI -> "WRITTEN BY ON-DEVICE AI"
+                    SummarySource.EXTERNAL_AI -> "WRITTEN BY EXTERNAL AI PROVIDER"
                     SummarySource.TEMPLATE -> "PLAIN SUMMARY (NOT AI)"
                     null -> "SUMMARY"
                 }

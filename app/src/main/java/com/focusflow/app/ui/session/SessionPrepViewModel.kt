@@ -12,7 +12,13 @@ import com.focusflow.app.data.db.SessionMode
 import com.focusflow.app.data.db.StudyPresetEntity
 import com.focusflow.app.data.db.SubjectEntity
 import com.focusflow.app.data.db.TaskEntity
+import com.focusflow.app.data.repo.AllowedAppRule
+import com.focusflow.app.data.repo.BlockRulesRepository
+import com.focusflow.app.data.repo.BlockedAppRule
+import com.focusflow.app.data.repo.BreakConfigRepository
 import com.focusflow.app.data.repo.DraftTask
+import com.focusflow.app.launch.LaunchOutcome
+import com.focusflow.app.launch.SessionLauncher
 import com.focusflow.app.data.repo.PresetDraft
 import com.focusflow.app.data.repo.PresetRepository
 import com.focusflow.app.data.repo.SessionDraft
@@ -43,6 +49,10 @@ data class PrepForm(
     val mode: SessionMode = SessionMode.TIMED,
     val durationMinutes: Int = 25,
     val strict: Boolean = true,
+    val blockShorts: Boolean = true,
+    val floatingAssistant: Boolean = true,
+    /** When saving a preset, also copy the current blocked/allowed app lists and break rules into it. */
+    val includeBlocking: Boolean = false,
     val loadedPresetId: Long? = null,
 )
 
@@ -70,6 +80,7 @@ data class AiUiState(
     val generating: Boolean = false,
     val proposals: List<Proposal> = emptyList(),
     val origin: TaskOrigin = TaskOrigin.RULE_BASED,
+    val provider: String? = null,
     val note: String? = null,
     val listening: Boolean = false,
     val partial: String = "",
@@ -84,6 +95,9 @@ class SessionPrepViewModel(
     private val settings: AppSettings,
     private val aiService: AiService,
     private val voice: VoiceRecognizer,
+    private val launcher: SessionLauncher,
+    private val blockRules: BlockRulesRepository,
+    private val breakConfigs: BreakConfigRepository,
 ) : ViewModel() {
     private val form = MutableStateFlow(PrepForm())
     private val aiState = MutableStateFlow(AiUiState(voice = voice.availability()))
@@ -141,6 +155,9 @@ class SessionPrepViewModel(
     fun setMode(m: SessionMode) = form.update { it.copy(mode = m) }
     fun setDuration(min: Int) = form.update { it.copy(durationMinutes = min.coerceIn(1, 600)) }
     fun setStrict(v: Boolean) = form.update { it.copy(strict = v) }
+    fun setBlockShorts(v: Boolean) = form.update { it.copy(blockShorts = v) }
+    fun setFloatingAssistant(v: Boolean) = form.update { it.copy(floatingAssistant = v) }
+    fun setIncludeBlocking(v: Boolean) = form.update { it.copy(includeBlocking = v) }
 
     fun addChapter(name: String) {
         val subjectId = form.value.subjectId ?: return
@@ -233,6 +250,7 @@ class SessionPrepViewModel(
                 else it.copy(
                     generating = false,
                     origin = r.source,
+                    provider = r.provider,
                     note = r.note,
                     proposals = r.tasks.map { t -> Proposal(t.title, t.minutes, t.subtasks) },
                 )
@@ -297,6 +315,11 @@ class SessionPrepViewModel(
                     mode = p.mode,
                     durationMinutes = p.durationMinutes,
                     strict = p.strict,
+                    blockShorts = p.blockYoutubeShorts,
+                    floatingAssistant = p.floatingAssistant,
+                    // The preset's saved tasks replace the draft list (they are applied through the
+                    // normal de-duplicating path, so open tasks are reused, never copied).
+                    tasks = if (p.tasks.isNotEmpty()) p.tasks else it.tasks,
                     loadedPresetId = p.id,
                 )
             }
@@ -307,14 +330,26 @@ class SessionPrepViewModel(
         val f = form.value
         viewModelScope.launch {
             val existing = if (updateExisting) f.loadedPresetId?.let { presetRepo.load(it) } else null
-            val draft = (existing ?: PresetDraft(name = name)).copy(
+            // Updating starts from the stored preset, so anything this screen does not edit
+            // (app lists, break rules) is carried over instead of being erased.
+            var draft = (existing ?: PresetDraft(name = name)).copy(
                 name = if (existing != null) existing.name else name,
                 subjectId = f.subjectId,
                 chapterIds = f.chapterIds,
                 mode = f.mode,
                 durationMinutes = f.durationMinutes,
                 strict = f.strict,
+                blockYoutubeShorts = f.blockShorts,
+                floatingAssistant = f.floatingAssistant,
+                tasks = f.tasks,
             )
+            if (f.includeBlocking) {
+                draft = draft.copy(
+                    blockedApps = blockRules.blocked.first().map { BlockedAppRule(it.packageName, it.label, it.category, it.blockedDuringBreak) },
+                    allowedApps = blockRules.allowed.first().map { AllowedAppRule(it.packageName, it.label) },
+                    breakConfig = breakConfigs.global.first(),
+                )
+            }
             when (val r = presetRepo.save(draft)) {
                 is PresetRepository.SaveResult.Saved -> {
                     form.update { it.copy(loadedPresetId = r.id) }
@@ -345,7 +380,7 @@ class SessionPrepViewModel(
         val f = ui.form
         viewModelScope.launch {
             try {
-                val result = sessions.start(
+                val result = launcher.start(
                     SessionDraft(
                         subjectId = subject.id,
                         subjectName = subject.name,
@@ -356,11 +391,15 @@ class SessionPrepViewModel(
                         strict = f.strict,
                         presetId = f.loadedPresetId,
                         tasks = f.tasks,
+                        floatingAssistant = f.floatingAssistant,
+                        blockShorts = f.blockShorts,
                     ),
                 )
                 when (result) {
-                    is StartResult.Started -> _started.tryEmit(result.sessionId)
-                    StartResult.AlreadyActive -> _messages.tryEmit("A session is already running")
+                    is LaunchOutcome.Started -> _started.tryEmit(result.sessionId)
+                    is LaunchOutcome.AlreadyActive -> _messages.tryEmit("A session is already running")
+                    is LaunchOutcome.Invalid -> _messages.tryEmit(result.reason)
+                    is LaunchOutcome.Navigate -> Unit
                 }
             } finally {
                 starting.value = false

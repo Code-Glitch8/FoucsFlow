@@ -3,17 +3,23 @@ package com.focusflow.app.ai
 import com.focusflow.app.data.db.SummarySource
 import com.focusflow.app.data.db.TaskOrigin
 import com.focusflow.app.data.settings.AppSettings
+import com.focusflow.app.ai.external.ExternalAiClient
+import com.focusflow.app.ai.external.ProviderRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 
 data class TaskExtraction(
     val tasks: List<ExtractedTask>,
-    /** ON_DEVICE_AI only when the local model really produced the tasks; otherwise RULE_BASED. */
+    /** EXTERNAL_AI / ON_DEVICE_AI only when that step really produced the tasks; otherwise RULE_BASED. */
     val source: TaskOrigin,
-    /** Why the fallback was used, or other things the user should know. */
+    /** Why a fallback was used, or other things the user should know. */
     val note: String?,
+    /** Display name of the external provider when [source] is EXTERNAL_AI. */
+    val provider: String? = null,
 )
 
-data class SummaryResult(val text: String, val source: SummarySource, val note: String?)
+data class SummaryResult(val text: String, val source: SummarySource, val note: String?, val provider: String? = null)
 
 /**
  * Chooses between the on-device model and the rule-based fallback, and always says which one
@@ -23,6 +29,8 @@ class AiService(
     private val models: ModelManager,
     private val llm: LocalLlm,
     private val settings: AppSettings,
+    private val providers: ProviderRepository,
+    private val client: ExternalAiClient = ExternalAiClient(),
 ) {
     private val extractSystem =
         "You turn a student's study description into a short, ordered checklist of tasks.\n" +
@@ -49,52 +57,82 @@ class AiService(
         return file to null
     }
 
+    private fun extractPrompt(description: String, subject: String?, chapters: List<String>, suffix: String = ""): String =
+        buildString {
+            if (!subject.isNullOrBlank()) append("Subject: $subject\n")
+            if (chapters.isNotEmpty()) append("Chapters: ${chapters.joinToString(", ")}\n")
+            append("Student said: \"${description.trim()}\"")
+            append(suffix)
+        }
+
+    private fun groundedTasks(reply: String, description: String, subject: String?, chapters: List<String>): StepResult<List<ExtractedTask>> {
+        val parsed = AiTaskParser.parse(reply) ?: return StepResult(null, "The AI's answer could not be understood.")
+        val (grounded, dropped) = AiTaskParser.keepGrounded(parsed, description, listOfNotNull(subject) + chapters)
+        if (grounded.isEmpty()) return StepResult(null, "The AI returned nothing usable.")
+        val note = if (dropped > 0) "$dropped suggested task${if (dropped == 1) " was" else "s were"} left out because it didn't match what you wrote." else null
+        return StepResult(grounded, note)
+    }
+
     suspend fun extractTasks(
         description: String,
         subject: String?,
         chapters: List<String>,
+        allowExternal: Boolean = true,
     ): TaskExtraction {
-        val fallback = { why: String? ->
-            TaskExtraction(RuleBasedTaskExtractor.extract(description), TaskOrigin.RULE_BASED, why)
+        val provider = if (allowExternal) providers.ready() else null
+        val external: (suspend () -> StepResult<List<ExtractedTask>>)? = provider?.let { p ->
+            suspend {
+                val r = withContext(Dispatchers.IO) {
+                    client.complete(p.config, p.apiKey, extractSystem, extractPrompt(description, subject, chapters))
+                }
+                r.fold(
+                    onSuccess = { reply -> groundedTasks(reply, description, subject, chapters).let { if (it.value == null) StepResult(null, "${p.config.name}: ${it.note} Used the next option instead.") else it } },
+                    onFailure = { StepResult(null, "${p.config.name} could not be used (${it.message}). Used the next option instead.") },
+                )
+            }
         }
-        val (file, problem) = usableModel()
-        if (file == null) return fallback(problem)
-
-        val noThink = ModelCatalog.forFile(file.name)?.noThink == true || file.name.startsWith("Qwen3", true)
-        val prompt = buildString {
-            if (!subject.isNullOrBlank()) append("Subject: $subject\n")
-            if (chapters.isNotEmpty()) append("Chapters: ${chapters.joinToString(", ")}\n")
-            append("Student said: \"${description.trim()}\"")
-            if (noThink) append(" /no_think")
+        val onDevice: suspend () -> StepResult<List<ExtractedTask>> = onDevice@{
+            val (file, problem) = usableModel()
+            if (file == null) {
+                StepResult(null, problem)
+            } else {
+                val noThink = ModelCatalog.forFile(file.name)?.noThink == true || file.name.startsWith("Qwen3", true)
+                val reply = llm.generate(file.absolutePath, extractSystem, extractPrompt(description, subject, chapters, if (noThink) " /no_think" else ""))
+                    .getOrElse { return@onDevice StepResult(null, "The on-device model could not run (${it.message ?: it.javaClass.simpleName}); used simple rules instead.") }
+                groundedTasks(reply, description, subject, chapters).let { if (it.value == null) StepResult(null, it.note + " Used simple rules instead.") else it }
+            }
         }
-        val reply = llm.generate(file.absolutePath, extractSystem, prompt)
-            .getOrElse { return fallback("The on-device model could not run (${it.message ?: it.javaClass.simpleName}); used simple rules instead.") }
-
-        val parsed = AiTaskParser.parse(reply)
-            ?: return fallback("The model's answer could not be understood; used simple rules instead.")
-        val (grounded, dropped) = AiTaskParser.keepGrounded(parsed, description, listOfNotNull(subject) + chapters)
-        if (grounded.isEmpty()) return fallback("The model returned nothing usable; used simple rules instead.")
-        val note = if (dropped > 0) "$dropped suggested task${if (dropped == 1) " was" else "s were"} left out because it didn't match what you wrote." else null
-        return TaskExtraction(grounded, TaskOrigin.ON_DEVICE_AI, note)
+        return AiChain.extract(external, provider?.config?.name, onDevice) { RuleBasedTaskExtractor.extract(description) }
     }
 
     suspend fun summarize(facts: SummaryFacts): SummaryResult {
         val template = TemplateSummary.session(facts)
-        val (file, problem) = usableModel()
-        if (file == null) return SummaryResult(template, SummarySource.TEMPLATE, problem)
-        val noThink = file.name.startsWith("Qwen3", true)
-        val reply = llm.generate(
-            file.absolutePath, summarySystem,
-            "FACTS:\n$template" + if (noThink) "\n/no_think" else "",
-        ).getOrElse {
-            return SummaryResult(template, SummarySource.TEMPLATE, "The on-device model could not run; used a plain summary.")
+        val provider = providers.ready()
+        val external: (suspend () -> StepResult<String>)? = provider?.let { p ->
+            suspend {
+                val r = withContext(Dispatchers.IO) { client.complete(p.config, p.apiKey, summarySystem, "FACTS:\n$template") }
+                r.fold(
+                    onSuccess = { text ->
+                        val clean = text.replace(Regex("<think>.*?</think>", RegexOption.DOT_MATCHES_ALL), "").trim()
+                        if (isFaithful(clean, template)) StepResult(clean) else StepResult(null, "${p.config.name}'s summary didn't match your session data.")
+                    },
+                    onFailure = { StepResult(null, "${p.config.name} could not be used (${it.message}).") },
+                )
+            }
         }
-        val text = reply.replace(Regex("<think>.*?</think>", RegexOption.DOT_MATCHES_ALL), "").trim()
-        return if (isFaithful(text, template)) {
-            SummaryResult(text, SummarySource.ON_DEVICE_AI, null)
-        } else {
-            SummaryResult(template, SummarySource.TEMPLATE, "The model's summary didn't match your session data; used a plain summary.")
+        val onDevice: suspend () -> StepResult<String> = onDevice@{
+            val (file, problem) = usableModel()
+            if (file == null) {
+                StepResult(null, problem)
+            } else {
+                val noThink = file.name.startsWith("Qwen3", true)
+                val reply = llm.generate(file.absolutePath, summarySystem, "FACTS:\n$template" + if (noThink) "\n/no_think" else "")
+                    .getOrElse { return@onDevice StepResult(null, "The on-device model could not run; used a plain summary.") }
+                val text = reply.replace(Regex("<think>.*?</think>", RegexOption.DOT_MATCHES_ALL), "").trim()
+                if (isFaithful(text, template)) StepResult(text) else StepResult(null, "The model's summary didn't match your session data; used a plain summary.")
+            }
         }
+        return AiChain.summarize(template, external, provider?.config?.name, onDevice)
     }
 
     /** Rejects empty/over-long text, and any number that is not in the facts (a cheap check against invented figures). */
@@ -106,5 +144,5 @@ class AiService(
 
     /** Short end-to-end check used by the "Test model" button. */
     suspend fun selfTest(): TaskExtraction =
-        extractTasks("I want to revise quadratic equations, solve 20 questions and review the ones I got wrong", "Mathematics", emptyList())
+        extractTasks("I want to revise quadratic equations, solve 20 questions and review the ones I got wrong", "Mathematics", emptyList(), allowExternal = false)
 }

@@ -78,7 +78,7 @@ class FocusSessionService : Service() {
             val container = (application as FocusFlowApp).container
             val assistant = overlay ?: FloatingAssistant(this@FocusSessionService, container).also { overlay = it }
             while (scope.isActive) {
-                val wantBubble = container.settings.floatingEnabled.first() &&
+                val wantBubble = active.session.floatingAssistant && container.settings.floatingEnabled.first() &&
                     Permissions.overlayGranted(this@FocusSessionService) &&
                     !AppVisibility.mainVisible.value
                 if (wantBubble) assistant.show() else assistant.hide()

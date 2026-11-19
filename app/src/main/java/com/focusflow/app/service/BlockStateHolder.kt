@@ -13,7 +13,9 @@ import com.focusflow.app.domain.ShortsMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 
 /** Latest rules, session and YouTube settings. Whether a break is running is derived from the clock at read time. */
@@ -35,9 +37,11 @@ data class BlockSnapshot(
         essentials = essentials,
     )
 
-    fun shortsEnabled(now: Long) = BlockPolicy.shortsEnabled(shortsMode, sessionActive, onBreak(now))
+    fun shortsEnabled(now: Long) =
+        BlockPolicy.shortsEnabled(shortsMode, sessionActive, onBreak(now)) && session?.blockShorts != false
     fun homeRedirectEnabled(now: Long) =
-        BlockPolicy.homeRedirectEnabled(homeRedirect, shortsMode, sessionActive, onBreak(now))
+        BlockPolicy.homeRedirectEnabled(homeRedirect, shortsMode, sessionActive, onBreak(now)) &&
+            session?.blockShorts != false
 }
 
 /** Shared by the accessibility service and the usage-stats fallback so they always agree. */
@@ -47,13 +51,29 @@ class BlockStateHolder(
     settings: AppSettings,
     scope: CoroutineScope,
 ) {
+    /**
+     * The rule lists that apply to the running session: the preset's own lists when the session was
+     * started from a preset that has any, otherwise the global lists.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val effectiveRules = sessions.observeActiveSession().flatMapLatest { session ->
+        val presetId = session?.presetId
+        if (presetId == null) {
+            combine(rules.blocked, rules.allowed) { b, a -> b to a }
+        } else {
+            combine(
+                rules.blockedForPreset(presetId), rules.allowedForPreset(presetId),
+                rules.blocked, rules.allowed,
+            ) { pb, pa, gb, ga -> if (pb.isEmpty() && pa.isEmpty()) gb to ga else pb to pa }
+        }
+    }
+
     val snapshot: StateFlow<BlockSnapshot> = combine(
         sessions.observeActiveSession(),
-        rules.blocked,
-        rules.allowed,
+        effectiveRules,
         settings.shortsMode,
         settings.homeRedirect,
-    ) { session, blocked, allowed, shorts, redirect ->
+    ) { session, (blocked, allowed), shorts, redirect ->
         BlockSnapshot(
             session = session,
             blocked = blocked.associate { it.packageName to BlockRule(it.packageName, it.blockedDuringBreak) },

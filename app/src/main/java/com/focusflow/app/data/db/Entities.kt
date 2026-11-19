@@ -15,11 +15,11 @@ enum class SessionStatus { ACTIVE, COMPLETED, ENDED_EARLY, EMERGENCY_EXIT }
 enum class TaskStatus { OPEN, DONE, DISMISSED }
 
 /** Where a task came from, so AI output and fallback output are never confused. */
-enum class TaskOrigin { MANUAL, ON_DEVICE_AI, RULE_BASED }
+enum class TaskOrigin { MANUAL, ON_DEVICE_AI, RULE_BASED, EXTERNAL_AI }
 
 enum class AppCategory { GAME, SOCIAL, ENTERTAINMENT, CUSTOM }
 
-enum class SummarySource { ON_DEVICE_AI, TEMPLATE }
+enum class SummarySource { ON_DEVICE_AI, TEMPLATE, EXTERNAL_AI }
 
 @Entity(tableName = "subjects", indices = [Index(value = ["name"], unique = true)])
 data class SubjectEntity(
@@ -133,6 +133,9 @@ data class StudySessionEntity(
     val breakEndsAt: Long? = null,
     val shortBreaksUsed: Int = 0,
     val longBreaksUsed: Int = 0,
+    /** Per-session switches copied from the preset/widget that started it (schema v2). */
+    val floatingAssistant: Boolean = true,
+    val blockShorts: Boolean = true,
 )
 
 @Entity(
@@ -321,3 +324,69 @@ data class SessionSummaryEntity(
     val source: SummarySource,
     val createdAt: Long = System.currentTimeMillis(),
 )
+
+/** A task template stored in a preset. Applied through the normal de-duplicating task path when the preset starts. */
+@Entity(
+    tableName = "preset_tasks",
+    foreignKeys = [
+        ForeignKey(
+            entity = StudyPresetEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["presetId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("presetId")],
+)
+data class PresetTaskEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val presetId: Long,
+    val title: String,
+    val estimatedMinutes: Int? = null,
+    val chapterId: Long? = null,
+    /** Subtask titles, one per line. */
+    val subtasks: String = "",
+    val position: Int = 0,
+)
+
+enum class WidgetType { TIMER, OPEN_ENDED, HOMEWORK, SUBJECT, PRESET, CUSTOM }
+
+enum class WidgetSize { SMALL, LARGE }
+
+/** What a CUSTOM widget does when tapped. Every other widget type always starts a session. */
+enum class WidgetAction { START_SESSION, OPEN_PREPARE, OPEN_TASKS, OPEN_HISTORY, OPEN_STATISTICS }
+
+/**
+ * A configurable dashboard widget. The id is a stable UUID so reordering, editing and backups
+ * never change a widget's identity. Chapter and task lists are comma separated ids.
+ */
+@Entity(tableName = "dashboard_widgets", indices = [Index("position")])
+data class DashboardWidgetEntity(
+    @PrimaryKey val id: String = java.util.UUID.randomUUID().toString(),
+    val type: WidgetType,
+    val title: String,
+    val icon: String = "timer",
+    val colorKey: String = "indigo",
+    val size: WidgetSize = WidgetSize.SMALL,
+    val position: Int = 0,
+    val visible: Boolean = true,
+    val mode: SessionMode = SessionMode.TIMED,
+    val durationMinutes: Int = 25,
+    val strict: Boolean = true,
+    val subjectId: Long? = null,
+    val chapterIds: String = "",
+    val taskIds: String = "",
+    val presetId: Long? = null,
+    val action: WidgetAction = WidgetAction.START_SESSION,
+    val createdAt: Long = System.currentTimeMillis(),
+) {
+    fun chapterIdSet(): Set<Long> = parseIds(chapterIds)
+    fun taskIdList(): List<Long> = parseIds(taskIds).toList()
+
+    companion object {
+        fun parseIds(csv: String): Set<Long> =
+            csv.split(',').mapNotNull { it.trim().toLongOrNull() }.toCollection(LinkedHashSet())
+
+        fun joinIds(ids: Collection<Long>): String = ids.distinct().joinToString(",")
+    }
+}

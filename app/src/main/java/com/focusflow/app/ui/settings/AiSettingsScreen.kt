@@ -94,7 +94,7 @@ class AiSettingsViewModel(
 private fun mb(b: Long) = if (b >= 1024L * 1024 * 1024) "%.1f GB".format(b / 1073741824.0) else "${b / (1024 * 1024)} MB"
 
 @Composable
-fun AiSettingsScreen(onBack: () -> Unit) {
+fun AiSettingsScreen(onBack: () -> Unit, onOpenProviders: () -> Unit = {}) {
     val vm = containerViewModel { AiSettingsViewModel(it.settings, it.models, it.llm, it.ai) }
     val enabled by vm.enabled.collectAsStateWithLifecycle()
     val selected by vm.selected.collectAsStateWithLifecycle()
@@ -113,7 +113,7 @@ fun AiSettingsScreen(onBack: () -> Unit) {
             text = {
                 Text(
                     "This downloads about ${mb(spec.approxBytes)} from Hugging Face over your current connection. " +
-                        "It is the only time FocusFlow uses the internet. After that, the AI runs entirely on your phone.",
+                        "Apart from optional external AI providers you set up yourself, it is the only time FocusFlow uses the internet. After that, the AI runs entirely on your phone.",
                 )
             },
             confirmButton = { TextButton(onClick = { vm.models.startDownload(spec); confirm = null }) { Text("Download") } },
@@ -146,6 +146,18 @@ fun AiSettingsScreen(onBack: () -> Unit) {
                     }
                     Switch(checked = enabled, onCheckedChange = vm::setEnabled)
                 }
+            }
+        }
+        item {
+            AppCard {
+                Text("External AI providers (optional)", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Use your own OpenAI-compatible, OpenRouter or Gemini account. When one is selected it is tried first, " +
+                        "then the on-device model, then simple rules. Results always say which one produced them.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedButton(onClick = onOpenProviders) { Text("Manage providers") }
             }
         }
         item { SectionLabel("MODELS") }

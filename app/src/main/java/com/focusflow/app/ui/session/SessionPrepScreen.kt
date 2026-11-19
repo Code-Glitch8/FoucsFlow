@@ -75,7 +75,7 @@ private sealed interface PrepDialog {
 @Composable
 fun SessionPrepScreen(presetId: Long? = null, onBack: () -> Unit, onManageSubjects: () -> Unit) {
     val vm = containerViewModel {
-        SessionPrepViewModel(it.sessions, it.subjects, it.tasks, it.presets, it.settings, it.ai, com.focusflow.app.speech.VoiceRecognizer(it.appContext))
+        SessionPrepViewModel(it.sessions, it.subjects, it.tasks, it.presets, it.settings, it.ai, com.focusflow.app.speech.VoiceRecognizer(it.appContext), it.launcher, it.blockRules, it.breakConfig)
     }
     val ui by vm.state.collectAsStateWithLifecycle()
     val form = ui.form
@@ -88,7 +88,7 @@ fun SessionPrepScreen(presetId: Long? = null, onBack: () -> Unit, onManageSubjec
     LaunchedEffect(vm) { vm.messages.collect { snackbar.showSnackbar(it) } }
     LaunchedEffect(vm) {
         vm.started.collect {
-            FocusSessionService.start(context)
+            // The shared SessionLauncher already started the service; just leave the setup screen.
             onBack()
         }
     }
@@ -146,6 +146,10 @@ fun SessionPrepScreen(presetId: Long? = null, onBack: () -> Unit, onManageSubjec
                                 )
                             }
                         }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Also save app-blocking lists and break rules", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                        Switch(checked = form.includeBlocking, onCheckedChange = vm::setIncludeBlocking)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = { dialog = PrepDialog.SavePreset }) { Text("Save as preset") }
@@ -286,8 +290,11 @@ fun SessionPrepScreen(presetId: Long? = null, onBack: () -> Unit, onManageSubjec
             if (ui.ai.proposals.isNotEmpty() || ui.ai.note != null) {
                 item {
                     AppCard {
-                        val label = if (ui.ai.origin == com.focusflow.app.data.db.TaskOrigin.ON_DEVICE_AI)
-                            "SUGGESTED BY ON-DEVICE AI" else "SUGGESTED BY SIMPLE RULES (NOT AI)"
+                        val label = when (ui.ai.origin) {
+                            com.focusflow.app.data.db.TaskOrigin.ON_DEVICE_AI -> "SUGGESTED BY ON-DEVICE AI"
+                            com.focusflow.app.data.db.TaskOrigin.EXTERNAL_AI -> "SUGGESTED BY EXTERNAL AI PROVIDER" + (ui.ai.provider?.let { " ($it)" } ?: "")
+                            else -> "SUGGESTED BY SIMPLE RULES (NOT AI)"
+                        }
                         SectionLabel(label)
                         ui.ai.note?.let {
                             Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -479,6 +486,27 @@ fun SessionPrepScreen(presetId: Long? = null, onBack: () -> Unit, onManageSubjec
                             )
                         }
                         Switch(checked = form.strict, onCheckedChange = vm::setStrict)
+                    }
+                }
+            }
+
+            // ---- per-session focus environment ----
+            item {
+                AppCard {
+                    SectionLabel("FOCUS ENVIRONMENT")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Floating assistant", style = MaterialTheme.typography.titleMedium)
+                            Text("Show the draggable FocusFlow bubble while you study in other apps.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = form.floatingAssistant, onCheckedChange = vm::setFloatingAssistant)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Block YouTube Shorts", style = MaterialTheme.typography.titleMedium)
+                            Text("Applies to this session when your Shorts mode (Settings → Blocking) is on.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = form.blockShorts, onCheckedChange = vm::setBlockShorts)
                     }
                 }
             }

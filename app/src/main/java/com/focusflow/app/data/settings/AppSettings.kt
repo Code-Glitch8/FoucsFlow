@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.focusflow.app.data.db.SessionMode
@@ -29,6 +30,13 @@ class AppSettings(private val context: Context) {
         val voiceOfflineOnly = booleanPreferencesKey("voice_offline_only")
         val bubbleX = intPreferencesKey("bubble_x")
         val bubbleY = intPreferencesKey("bubble_y")
+        val class11Seed = intPreferencesKey("class11_chapters_seed_version")
+        val widgetsSeeded = booleanPreferencesKey("dashboard_widgets_seeded")
+        val snapGptEnabled = booleanPreferencesKey("snapgpt_enabled")
+        val snapGptPackage = stringPreferencesKey("snapgpt_package")
+        val snapGptLastSession = longPreferencesKey("snapgpt_last_session")
+        val aiProviders = stringPreferencesKey("ai_providers_json")
+        val aiSelectedProvider = stringPreferencesKey("ai_selected_provider")
     }
 
     private val store get() = context.settingsStore
@@ -53,6 +61,27 @@ class AppSettings(private val context: Context) {
     val aiModelFile: Flow<String?> = store.data.map { it[Keys.aiModelFile] }
     /** When true, voice input is only allowed with an on-device recognizer (never sends audio to a server). */
     val voiceOfflineOnly: Flow<Boolean> = store.data.map { it[Keys.voiceOfflineOnly] ?: true }
+
+    val class11SeedVersion: Flow<Int> = store.data.map { it[Keys.class11Seed] ?: 0 }
+    suspend fun setClass11SeedVersion(v: Int) = store.edit { it[Keys.class11Seed] = v }
+
+    val widgetsSeeded: Flow<Boolean> = store.data.map { it[Keys.widgetsSeeded] ?: false }
+    suspend fun setWidgetsSeeded(v: Boolean) = store.edit { it[Keys.widgetsSeeded] = v }
+
+    /** Off by default: launching another app is something the user must opt into. */
+    val snapGptEnabled: Flow<Boolean> = store.data.map { it[Keys.snapGptEnabled] ?: false }
+    val snapGptPackage: Flow<String> = store.data.map { it[Keys.snapGptPackage] ?: "com.snapgpt.assistant" }
+    val snapGptLastSession: Flow<Long> = store.data.map { it[Keys.snapGptLastSession] ?: -1L }
+    suspend fun setSnapGptEnabled(v: Boolean) = store.edit { it[Keys.snapGptEnabled] = v }
+    suspend fun setSnapGptPackage(v: String) = store.edit { it[Keys.snapGptPackage] = v.trim() }
+    suspend fun setSnapGptLastSession(id: Long) = store.edit { it[Keys.snapGptLastSession] = id }
+
+    /** Non-secret provider configuration as JSON. API keys are never stored here. */
+    val aiProvidersJson: Flow<String?> = store.data.map { it[Keys.aiProviders] }
+    val aiSelectedProvider: Flow<String?> = store.data.map { it[Keys.aiSelectedProvider] }
+    suspend fun setAiProvidersJson(json: String) = store.edit { it[Keys.aiProviders] = json }
+    suspend fun setAiSelectedProvider(id: String?) =
+        store.edit { if (id == null) it.remove(Keys.aiSelectedProvider) else it[Keys.aiSelectedProvider] = id }
 
     suspend fun setAiEnabled(v: Boolean) = store.edit { it[Keys.aiEnabled] = v }
     suspend fun setAiModelFile(name: String?) = store.edit { if (name == null) it.remove(Keys.aiModelFile) else it[Keys.aiModelFile] = name }

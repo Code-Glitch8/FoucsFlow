@@ -15,6 +15,9 @@ class BlockRulesRepository(
     val blocked: Flow<List<BlockedApplicationEntity>> = dao.observeGlobalBlocked()
     val allowed: Flow<List<AllowedApplicationEntity>> = dao.observeGlobalAllowed()
 
+    fun blockedForPreset(presetId: Long) = dao.observeBlockedForPreset(presetId)
+    fun allowedForPreset(presetId: Long) = dao.observeAllowedForPreset(presetId)
+
     /** Blocking an app removes it from the allowed list (an app is in at most one list). */
     suspend fun block(packageName: String, label: String, category: AppCategory, blockedDuringBreak: Boolean = false) {
         db.withTransaction {
