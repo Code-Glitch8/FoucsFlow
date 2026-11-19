@@ -50,8 +50,8 @@ class BlockingViewModel(
     init { viewModelScope.launch { apps.value = InstalledApps.load(context) } }
 
     val state: StateFlow<BlockingUiState> = combine(
-        apps, query, rules.blocked, rules.allowed, settings.shortsMode, settings.blockYoutubeApp,
-    ) { a, q, blocked, allowed, shorts, blockYoutube ->
+        apps, query, rules.blocked, rules.allowed, settings.shortsMode,
+    ) { a, q, blocked, allowed, shorts ->
         BlockingUiState(
             loading = a == null,
             apps = a ?: emptyList(),
@@ -59,10 +59,12 @@ class BlockingViewModel(
             allowed = allowed.map { it.packageName }.toSet(),
             query = q,
             shortsMode = shorts,
-            blockYoutubeApp = blockYoutube,
         )
-    }.combine(settings.homeRedirect) { ui, redirect -> ui.copy(homeRedirect = redirect) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BlockingUiState())
+    }.combine(settings.blockYoutubeApp) { ui, blockYoutube ->
+        ui.copy(blockYoutubeApp = blockYoutube)
+    }.combine(settings.homeRedirect) { ui, redirect ->
+        ui.copy(homeRedirect = redirect)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BlockingUiState())
 
     fun setQuery(q: String) { query.value = q }
 
