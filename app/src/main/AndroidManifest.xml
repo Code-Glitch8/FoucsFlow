@@ -2,24 +2,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Keep the running study session (timer, break countdown) alive while you use other apps. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-    <!-- Android 13+: lets the session notification be shown. The app works if you decline. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <!-- Used ONLY when you press Download for an offline AI model. Nothing else touches the network. -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Voice input for describing what you want to study. Asked for when you tap the microphone. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-
-    <!-- Optional: shown only if you grant them. Used for the usage-access fallback and the floating assistant. -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
-    <!-- Lets the app list launchable apps for the blocklist without the broad QUERY_ALL_PACKAGES permission. -->
     <queries>
-        <!-- Optional SnapGPT hand-off (see SnapGptLauncher). -->
         <package android:name="com.snapgpt.assistant" />
         <intent>
             <action android:name="com.snapgpt.action.SHOW_FLOATING" />
@@ -49,7 +40,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.FocusFlow">
 
-        <!-- Needed only if you choose the optional GPU backend of the AI runtime. -->
         <uses-native-library android:name="libvndksupport.so" android:required="false" />
         <uses-native-library android:name="libOpenCL.so" android:required="false" />
 
@@ -73,6 +63,39 @@
             android:taskAffinity="com.focusflow.app.block"
             android:theme="@style/Theme.FocusFlow" />
 
+        <activity
+            android:name=".widgets.PresetWidgetConfigureActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.FocusFlow" />
+
+        <receiver
+            android:name=".widgets.PresetFocusWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_focus_preset_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widgets.WeeklyAnalyticsWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_weekly_analytics_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widgets.PresetWidgetActionReceiver"
+            android:exported="false" />
+
         <service
             android:name=".service.FocusAccessibilityService"
             android:exported="true"
@@ -95,5 +118,4 @@
                 android:value="Keeps an active study session, its timer and break countdown running while the user studies in other apps" />
         </service>
     </application>
-
 </manifest>
