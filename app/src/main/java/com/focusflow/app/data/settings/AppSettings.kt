@@ -25,6 +25,7 @@ class AppSettings(private val context: Context) {
         val shortsMode = stringPreferencesKey("youtube_shorts_mode")
         val homeRedirect = booleanPreferencesKey("youtube_home_redirect")
         val blockYoutubeApp = booleanPreferencesKey("youtube_app_blocked")
+        val blockAllExceptAllowed = booleanPreferencesKey("block_all_except_allowed")
         val floatingEnabled = booleanPreferencesKey("floating_enabled")
         val voiceOfflineOnly = booleanPreferencesKey("voice_offline_only")
         val bubbleX = intPreferencesKey("bubble_x")
@@ -48,6 +49,7 @@ class AppSettings(private val context: Context) {
     val homeRedirect: Flow<Boolean> = store.data.map { it[Keys.homeRedirect] ?: false }
     /** Full YouTube app blocking is on by default during focus sessions; users can switch it off. */
     val blockYoutubeApp: Flow<Boolean> = store.data.map { it[Keys.blockYoutubeApp] ?: true }
+    val blockAllExceptAllowed: Flow<Boolean> = store.data.map { it[Keys.blockAllExceptAllowed] ?: false }
 
     val floatingEnabled: Flow<Boolean> = store.data.map { it[Keys.floatingEnabled] ?: true }
 
@@ -92,6 +94,7 @@ class AppSettings(private val context: Context) {
     suspend fun setShortsMode(mode: ShortsMode) = store.edit { it[Keys.shortsMode] = mode.name }
     suspend fun setHomeRedirect(enabled: Boolean) = store.edit { it[Keys.homeRedirect] = enabled }
     suspend fun setBlockYoutubeApp(enabled: Boolean) = store.edit { it[Keys.blockYoutubeApp] = enabled }
+    suspend fun setBlockAllExceptAllowed(enabled: Boolean) = store.edit { it[Keys.blockAllExceptAllowed] = enabled }
 
     suspend fun setThemeMode(mode: ThemeMode) = store.edit { it[Keys.theme] = mode.name }
     suspend fun setDefaultMode(mode: SessionMode) = store.edit { it[Keys.defaultMode] = mode.name }

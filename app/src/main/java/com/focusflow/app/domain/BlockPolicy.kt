@@ -17,6 +17,7 @@ data class PolicyInput(
     val essentials: Set<String>,
     /** Explicit setting to block the entire YouTube app during a focus session. */
     val blockYoutubeApp: Boolean = false,
+    val blockAllExceptAllowed: Boolean = false,
 )
 
 object BlockPolicy {
@@ -38,6 +39,7 @@ object BlockPolicy {
             return !input.onBreak || rule?.blockedDuringBreak == true
         }
         if (packageName in input.allowed) return false
+        if (input.blockAllExceptAllowed && !input.onBreak) return true
         if (rule == null) return false
         return !input.onBreak || rule.blockedDuringBreak
     }
