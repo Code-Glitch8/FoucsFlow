@@ -72,22 +72,27 @@ class BlockStateHolder(
         }
     }
 
+    private val appBlockingSettings = combine(
+        settings.blockYoutubeApp,
+        settings.blockAllExceptAllowed,
+    ) { blockYoutube, whitelistMode -> blockYoutube to whitelistMode }
+
     val snapshot: StateFlow<BlockSnapshot> = combine(
         sessions.observeActiveSession(),
         effectiveRules,
         settings.shortsMode,
         settings.homeRedirect,
-        settings.blockYoutubeApp,
-        settings.blockAllExceptAllowed,
-    ) { session, (blocked, allowed), shorts, redirect, blockYoutube, whitelistMode ->
+        appBlockingSettings,
+    ) { session, rulesPair, shorts, redirect, appFlags ->
+        val (blocked, allowed) = rulesPair
         BlockSnapshot(
             session = session,
             blocked = blocked.associate { it.packageName to BlockRule(it.packageName, it.blockedDuringBreak) },
             allowed = allowed.map { it.packageName }.toSet(),
             shortsMode = shorts,
             homeRedirect = redirect,
-            blockYoutubeApp = blockYoutube,
-            blockAllExceptAllowed = whitelistMode,
+            blockYoutubeApp = appFlags.first,
+            blockAllExceptAllowed = appFlags.second,
         )
     }.stateIn(scope, SharingStarted.Eagerly, BlockSnapshot())
 }
