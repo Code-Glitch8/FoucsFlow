@@ -19,7 +19,7 @@ To build locally: `./gradlew testDebugUnitTest assembleDebug` (JDK 17, Android S
 | Tasks from your description | On-device AI when a model is installed, otherwise simple rules. Suggestions are always labelled with their source, shown for review, and **never** start or complete anything until you accept them. |
 | Focus session | Foreground service with persistent notification; timing is derived from stored timestamps so app restarts or process death don't change it; break time is excluded from focus time. |
 | Earned breaks | Short/long breaks earned by tasks *you* mark done, configurable counts and lengths. |
-| Blocking | Accessibility-service app blocking with a block screen, allowed list, essentials (calls, phone, settings, etc.) never blocked, emergency exit that is separate from ordinary controls. Optional usage-stats fallback. |
+| Blocking | Accessibility-service app blocking with a block screen, allowed list, essentials (calls, phone, settings, etc.) never blocked, emergency exit that is separate from ordinary controls. Optional usage-stats fallback. A dedicated **Block the entire YouTube app** switch closes YouTube during focus sessions; earned breaks remain available unless YouTube is separately configured to stay blocked through breaks. |
 | YouTube Shorts | Block Shorts while leaving normal YouTube usable; optional redirect away from the Home feed; a "Test the detector" screen. |
 | Floating assistant | Draggable overlay bubble (position remembered) with timer, tasks and breaks. |
 | History & summaries | Filter by date, subject, chapter, type. Each finished session gets a summary labelled "on-device AI" or "plain summary (not AI)". Numbers in AI text are checked against the real session data. |
@@ -63,7 +63,7 @@ Notifications (ongoing session), Accessibility (app blocking, YouTube detection 
 
 ## Dashboard widgets, shared session start, AI providers (schema v2)
 
-**Dashboard widgets.** The Home tab shows configurable widgets (Timer, Open-ended, Homework, Subject, Saved setup, Custom).
+**Android home-screen widgets.** Add a **FocusFlow · Saved focus preset** widget from the Android launcher, choose one of your existing saved presets, and then tap **Start focus** to launch that exact setup immediately through the same `SessionLauncher` used by the app. Tap the widget card to change its selected preset. You can also add **FocusFlow · Weekly analytics** to see the total focus time and a seven-bar daily chart for the last seven days. The analytics widget refreshes periodically and when the app opens or a session ends.\n\n**Dashboard widgets.** The Home tab shows configurable widgets (Timer, Open-ended, Homework, Subject, Saved setup, Custom).
 Tapping one starts its session immediately - no setup screen. *Edit dashboard* adds, edits, deletes, reorders and hides widgets;
 they are stored in Room (`dashboard_widgets`, stable UUID ids) and survive restarts. If a session is already running, the tap
 shows a message with an "Open session" action instead of starting a second one. If the floating assistant is wanted but the
