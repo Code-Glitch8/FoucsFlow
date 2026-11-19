@@ -80,7 +80,11 @@ class HistoryRepository(
         val remoteIds = mutableSetOf<Long>()
 
         remoteRecords.forEach { record ->
-            if (record.status == "ACTIVE" || record.globalId.isBlank()) return@forEach
+            // A peer relays records it has already received. Do not render this phone's own
+            // sessions again as negative-ID remote entries when they are echoed back.
+            if (record.status == "ACTIVE" || record.globalId.isBlank() ||
+                record.globalId.startsWith("${sync.deviceId}:")
+            ) return@forEach
             val sessionId = stableNegativeId("session:${record.globalId}")
             remoteIds += sessionId
             val subjectKey = record.subjectName.trim().lowercase()
