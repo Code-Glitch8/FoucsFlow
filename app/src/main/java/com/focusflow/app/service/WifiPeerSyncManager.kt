@@ -60,7 +60,6 @@ class WifiPeerSyncManager(
         val wifi = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         val multicastLock = wifi.createMulticastLock("FocusFlowPeerSync").apply {
             setReferenceCounted(false)
-            acquire()
         }
         try {
             server.reuseAddress = true
@@ -106,8 +105,10 @@ class WifiPeerSyncManager(
                 try {
                     while (isActive) {
                         if (sync.pairingCode.value.isNullOrBlank()) {
+                            if (multicastLock.isHeld) multicastLock.release()
                             _status.value = "Set the same sync code on both phones"
                         } else {
+                            if (!multicastLock.isHeld) multicastLock.acquire()
                             announce(discovery)
                             _status.value = "Searching for your paired phone on this Wi-Fi"
                         }

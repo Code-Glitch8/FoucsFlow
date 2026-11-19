@@ -24,11 +24,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.focusflow.app.FocusFlowApp
 import com.focusflow.app.data.db.SessionMode
 import com.focusflow.app.data.repo.BreakConfigRepository
 import com.focusflow.app.data.settings.AppSettings
@@ -104,13 +106,14 @@ class SettingsViewModel(
 class WifiSyncSettingsViewModel(
     private val sync: LocalSyncRepository,
     private val wifiSync: WifiPeerSyncManager,
+    private val startSync: () -> Unit,
 ) : ViewModel() {
     val pairingCode = sync.pairingCode
     val status = wifiSync.status
-    fun save(code: String): Boolean = sync.savePairingCode(code)
+    fun save(code: String): Boolean = sync.savePairingCode(code).also { if (it) startSync() }
     fun clear() = sync.clearPairingCode()
     fun syncNow() = wifiSync.syncNow()
-    fun generate(): String = UUID.randomUUID().toString().also { sync.savePairingCode(it) }
+    fun generate(): String = UUID.randomUUID().toString().also { if (sync.savePairingCode(it)) startSync() }
 }
 
 private val DurationChoices = listOf(15, 25, 30, 45, 60, 90)
@@ -263,7 +266,8 @@ fun SettingsScreen(onOpenBlocking: () -> Unit, onOpenAi: () -> Unit, onOpenData:
 
 @Composable
 private fun WifiSyncSettingsCard() {
-    val vm = containerViewModel { WifiSyncSettingsViewModel(it.sync, it.wifiSync) }
+    val app = LocalContext.current.applicationContext as FocusFlowApp
+    val vm = containerViewModel { WifiSyncSettingsViewModel(it.sync, it.wifiSync, app::startWifiSync) }
     val savedCode by vm.pairingCode.collectAsStateWithLifecycle()
     val status by vm.status.collectAsStateWithLifecycle()
     var code by remember { mutableStateOf("") }

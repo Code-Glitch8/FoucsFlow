@@ -12,10 +12,15 @@ class FocusFlowApp : Application() {
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    fun startWifiSync() {
+        container.wifiSync.start(appScope)
+        container.wifiSync.syncNow()
+    }
+
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
-        container.wifiSync.start(appScope)
+        if (container.sync.pairingCode.value != null) container.wifiSync.start(appScope)
         appScope.launch {
             container.subjects.ensureBuiltIns()
             container.subjects.ensureClass11Chapters(container.settings)
