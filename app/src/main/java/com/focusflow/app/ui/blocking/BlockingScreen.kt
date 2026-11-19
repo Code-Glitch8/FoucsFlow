@@ -108,7 +108,18 @@ fun BlockingScreen(onBack: () -> Unit, onTestDetector: () -> Unit) {
         item {
             AppCard {
                 SectionLabel("YOUTUBE")
-                Text("Block Shorts (normal videos, search and subscriptions keep working)", style = MaterialTheme.typography.bodyLarge)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Block the entire YouTube app", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "Close YouTube during focus sessions, including videos, Shorts, search and Home. YouTube is available again during earned breaks unless you add it to the blocked list for breaks.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = ui.blockYoutubeApp, onCheckedChange = vm::setBlockYoutubeApp)
+                }
+                Text("Block Shorts (when full-app blocking is off)", style = MaterialTheme.typography.bodyLarge)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(ShortsMode.entries) { m ->
                         FilterChip(

@@ -15,20 +15,30 @@ data class PolicyInput(
     val allowed: Set<String>,
     /** Apps that are never blocked: this app, phone/emergency, launcher, keyboards, system UI. */
     val essentials: Set<String>,
+    /** Explicit setting to block the entire YouTube app during a focus session. */
+    val blockYoutubeApp: Boolean = false,
 )
 
 object BlockPolicy {
+    const val YOUTUBE_PACKAGE = "com.google.android.youtube"
+
     /**
-     * An app is blocked only while a focus session is active, only if the user put it on the
-     * blocked list, never if it is essential or on the allowed list, and not during a break
-     * unless the user asked for that specific app to stay blocked through breaks.
+     * An app is blocked only while a focus session is active, only if selected or covered by the
+     * full-YouTube setting, never if it is essential, and not during a break unless its own rule
+     * says it should stay blocked through breaks. The explicit full-YouTube switch takes precedence
+     * over a generic allow-list entry so its on-screen promise remains consistent.
      */
     fun shouldBlockApp(packageName: String?, input: PolicyInput): Boolean {
         if (packageName.isNullOrEmpty()) return false
         if (!input.sessionActive) return false
         if (packageName in input.essentials) return false
+
+        val rule = input.blocked[packageName]
+        if (packageName == YOUTUBE_PACKAGE && input.blockYoutubeApp) {
+            return !input.onBreak || rule?.blockedDuringBreak == true
+        }
         if (packageName in input.allowed) return false
-        val rule = input.blocked[packageName] ?: return false
+        if (rule == null) return false
         return !input.onBreak || rule.blockedDuringBreak
     }
 

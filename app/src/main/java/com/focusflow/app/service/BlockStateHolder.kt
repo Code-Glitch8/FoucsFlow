@@ -11,9 +11,9 @@ import com.focusflow.app.domain.PolicyInput
 import com.focusflow.app.domain.SessionClock
 import com.focusflow.app.domain.ShortsMode
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -25,6 +25,7 @@ data class BlockSnapshot(
     val allowed: Set<String> = emptySet(),
     val shortsMode: ShortsMode = ShortsMode.FOCUS_ONLY,
     val homeRedirect: Boolean = false,
+    val blockYoutubeApp: Boolean = true,
 ) {
     val sessionActive: Boolean get() = session != null
     fun onBreak(now: Long): Boolean = session?.let { SessionClock.isOnBreak(it.clock(), now) } == true
@@ -35,6 +36,7 @@ data class BlockSnapshot(
         blocked = blocked,
         allowed = allowed,
         essentials = essentials,
+        blockYoutubeApp = blockYoutubeApp,
     )
 
     fun shortsEnabled(now: Long) =
@@ -73,13 +75,15 @@ class BlockStateHolder(
         effectiveRules,
         settings.shortsMode,
         settings.homeRedirect,
-    ) { session, (blocked, allowed), shorts, redirect ->
+        settings.blockYoutubeApp,
+    ) { session, (blocked, allowed), shorts, redirect, blockYoutube ->
         BlockSnapshot(
             session = session,
             blocked = blocked.associate { it.packageName to BlockRule(it.packageName, it.blockedDuringBreak) },
             allowed = allowed.map { it.packageName }.toSet(),
             shortsMode = shorts,
             homeRedirect = redirect,
+            blockYoutubeApp = blockYoutube,
         )
     }.stateIn(scope, SharingStarted.Eagerly, BlockSnapshot())
 }

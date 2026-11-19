@@ -8,6 +8,7 @@ import androidx.lifecycle.lifecycleScope
 import com.focusflow.app.service.AppVisibility
 import com.focusflow.app.service.FocusSessionService
 import com.focusflow.app.ui.FocusFlowRoot
+import com.focusflow.app.widgets.WeeklyAnalyticsWidgetProvider
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -27,6 +28,7 @@ class MainActivity : ComponentActivity() {
         AppVisibility.mainVisible.value = true
         // If the process was killed mid-session, the session is still in the database:
         // bring the foreground service (timer, notification) back.
+        WeeklyAnalyticsWidgetProvider.refreshAll(this)
         lifecycleScope.launch {
             if ((application as FocusFlowApp).container.sessions.hasActive()) {
                 FocusSessionService.start(this@MainActivity)
