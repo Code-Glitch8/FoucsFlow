@@ -57,6 +57,25 @@ class BlockPolicyTest {
     }
 
     @Test
+    fun `whole YouTube app is blocked during focus but available on breaks`() {
+        val input = base.copy(blockYoutubeApp = true)
+        assertTrue(BlockPolicy.shouldBlockApp("com.google.android.youtube", input))
+        assertFalse(BlockPolicy.shouldBlockApp("com.google.android.youtube", input.copy(sessionActive = false)))
+        assertFalse(BlockPolicy.shouldBlockApp("com.google.android.youtube", input.copy(onBreak = true)))
+    }
+
+    @Test
+    fun `explicit YouTube block can remain active during a break`() {
+        val pkg = BlockPolicy.YOUTUBE_PACKAGE
+        val input = base.copy(
+            onBreak = true,
+            blockYoutubeApp = true,
+            blocked = base.blocked + (pkg to BlockRule(pkg, blockedDuringBreak = true)),
+        )
+        assertTrue(BlockPolicy.shouldBlockApp(pkg, input))
+    }
+
+    @Test
     fun `shorts modes`() {
         assertFalse(BlockPolicy.shortsEnabled(ShortsMode.OFF, sessionActive = true, onBreak = false))
         assertTrue(BlockPolicy.shortsEnabled(ShortsMode.ALWAYS, sessionActive = false, onBreak = false))
