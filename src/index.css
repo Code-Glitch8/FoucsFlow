@@ -1,0 +1,49 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --ff-bg: #F6F7FA;
+  --ff-surface: #FFFFFF;
+  --ff-surface-variant: #E8EBF1;
+  --ff-on-bg: #11151B;
+  --ff-on-surface-variant: #4A5362;
+  --ff-primary: #2F6FDB;
+  --ff-on-primary: #FFFFFF;
+  --ff-primary-container: #D6E6FF;
+  --ff-on-primary-container: #0B2A5C;
+  --ff-secondary: #1B7F6C;
+  --ff-on-secondary: #FFFFFF;
+  --ff-outline: #B7BECB;
+  --ff-error: #DC2626;
+}
+
+.dark {
+  --ff-bg: #0E1116;
+  --ff-surface: #151A21;
+  --ff-surface-variant: #1E2530;
+  --ff-on-bg: #E6E8EC;
+  --ff-on-surface-variant: #A9B1BE;
+  --ff-primary: #6EA8FF;
+  --ff-on-primary: #06214A;
+  --ff-primary-container: #1B3A6B;
+  --ff-on-primary-container: #D6E6FF;
+  --ff-secondary: #7FD6C2;
+  --ff-on-secondary: #00382E;
+  --ff-outline: #3A4352;
+  --ff-error: #FF8A80;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--ff-bg);
+  color: var(--ff-on-bg);
+}
+
+.font-mono-tabular {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,7 @@
+{
+  "name": "FocusFlow",
+  "description": "Study-focus planner, session timer, earned breaks, chapter analytics, distraction blocking rules, and AI study summaries.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
